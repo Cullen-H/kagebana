@@ -2097,8 +2097,8 @@ for (const [h, k] of [['hinome', 'fire'], ['raika', 'thunder'], ['tsukiyo', 'moo
   HERO_UNLOCK[h] = { keys: 0, req: s => (s.bossKills['god_' + k] || 0) >= 1, hint: `Free ${KAMI[k].name} from the Calamity in Wrath of the Gods.` };
   CAST[h] = { name: HEROES[h].name, pal: HEROES[h].pal, hair: HEROES[h].hair, acc: HEROES[h].acc };
 }
-HERO_UNLOCK.sekka = { keys: 0, req: s => s.flags.newcomer === 'sekka', hint: 'She waits by the rift. (The rift is not yet stable — a future story update.)' };
-HERO_UNLOCK.kuroto = { keys: 0, req: s => s.flags.newcomer === 'kuroto', hint: 'He waits by the rift. (The rift is not yet stable — a future story update.)' };
+HERO_UNLOCK.sekka = { keys: 0, req: s => s.flags.newcomer === 'sekka', hint: 'She waits by the rift.' };
+HERO_UNLOCK.kuroto = { keys: 0, req: s => s.flags.newcomer === 'kuroto', hint: 'He waits by the rift.' };
 CAST.sekka = { name: 'Sekka', pal: HEROES.sekka.pal, hair: 'hime', acc: 'ribbon' };
 CAST.kuroto = { name: 'Kuroto', pal: HEROES.kuroto.pal, hair: 'short', acc: null };
 CAST.omaga = { name: 'Ōmagatsuhi', pal: { hair: '#0a0610', hair2: '#000', skin: '#2a1a2a', outfit: '#0a0610', outfit2: '#000', eye: '#ff2e63', accent: '#5b2b8a', scarf: '#5b2b8a' }, hair: 'wild', acc: 'horns' };
@@ -2196,19 +2196,34 @@ const STORY3 = {
     ['narrator', 'Where the shrine\'s heart stood, the world splits open — a rift breathing cold, unfamiliar air.'],
   ],
   newcomers: [
-    ['narrator', 'The rift shudders. Two figures step out of it — one moving like a held breath, one like a thrown stone.'],
+    ['kuroto', 'Hold STILL, clock-girl!'],
+    ['sekka', 'You first.'],
+    ['$hero', 'What — who are you?! Where are my friends?!'],
     ['sekka', '...So this is the world on the other side. Smaller than I imagined. And very broken.'],
-    ['kuroto', 'Tch. Another one-moon dump. You — shard-kid. You the one who killed the thing at the bottom?'],
-    ['$hero', 'Who are you? Where are my friends?!'],
-    ['sekka', 'Sekka Tokimiya. In my world, time stopped the night your moon broke. I am the only one who still moves.'],
-    ['kuroto', 'Kuroto Amagiri. No shard. No blessing. No gods. I hunt what crawls out of holes like that one.'],
-    ['sekka', 'Your friends were pulled through. They are not dead — I can hear their clocks ticking on the other side.'],
-    ['kuroto', 'Rift\'s not stable. Step in now and it grinds you to paste. We wait for it to settle.'],
-    ['sekka', 'Until then, one of us will fight beside you. The other will guard the rift.'],
-    ['kuroto', 'So pick, shard-kid. Speed of time — or speed of fists.'],
+    ['kuroto', 'Tch. Another broken-moon dump. You — shard-kid. You the one who killed the thing at the bottom?'],
   ],
-  pickSekka: [['sekka', 'A wise choice. I will try not to stop time while you are mid-sentence.'], ['kuroto', 'Hmph. I\'ll watch the hole. Don\'t die before it opens.']],
-  pickKuroto: [['kuroto', 'Good. Try to keep up.'], ['sekka', 'Then I will keep the rift\'s clock. Come back in one piece, Moonbound.']],
+  newcomersAccuse: [
+    ['sekka', 'Sekka Tokimiya. In my world, time stopped the night your moon broke. I am the only one who still moves.'],
+    ['kuroto', 'Kuroto Amagiri. No shard. No blessing. No gods. I hunt what crawls out of holes like that one. And she\'s why it\'s there.'],
+    ['sekka', 'Your friends were pulled through. They are not dead — I can hear their clocks ticking on the other side. I am the only one who can.'],
+    ['sekka', 'And he crossed two worlds to kill me. Ask him. Then ask who finds your friends after he succeeds.'],
+    ['kuroto', 'Ask HER what stopped her world. Watch how fast she changes the subject.'],
+    ['kuroto', 'So pick, shard-kid. Speed of time — or speed of fists. Whoever you don\'t pick, we go through together.'],
+  ],
+  pickSekka: [
+    ['kuroto', 'Tch. Two on one. Fine.'],
+    ['kuroto', 'Doesn\'t matter. Rift\'s not stable. Step in now and it grinds you to paste, and nobody gets to the other side until it settles.'],
+    ['sekka', 'Then we wait. And you do not touch me until it opens.'],
+    ['kuroto', 'I\'ll watch the hole. Sleep light, clock-girl.'],
+    ['sekka', 'A wise choice, Moonbound. I will try not to stop time while you are mid-sentence.'],
+  ],
+  pickKuroto: [
+    ['sekka', '...Enough. Cut me down now and you will never hear your fox\'s clock again.'],
+    ['kuroto', 'She\'s right about that. Annoying.'],
+    ['kuroto', 'Besides, rift\'s not stable. Step in now and it grinds you to paste. Nobody goes through until it settles. She keeps, until then.'],
+    ['sekka', 'Then I will keep the rift\'s clock. Come back in one piece, Moonbound.'],
+    ['kuroto', 'Good fight, shard-kid. Try to keep up.'],
+  ],
 };
 Object.assign(BOSS_TALK, {
   god_fire: [[['hinome', 'LITTLE MOON. COME CLOSER. LET ME SHOW YOU A DAWN THAT NEVER ENDS.', 'angry']], [['hinome', 'Burn... burn... why won\'t you BURN?', 'angry']]],

@@ -371,6 +371,7 @@ const G = {
       if (crit && s.critHeal) P.heal(s.critHeal, true);
     }
     if (!src.noProc && !dot && !blocked) for (const x of els) { if (e.dead) break; this.proc(e, x, dmg, crit); }
+    if (e.scriptedFloor && this.hubFight && e.hp <= e.maxHp * e.scriptedFloor) { e.hp = e.maxHp * e.scriptedFloor; this.endHubFight(e); return dmg; }
     if (e.hp <= 0 && !e.dead) this.killEnemy(e);
     return dmg;
   },
@@ -506,7 +507,7 @@ const G = {
     if (e.isBoss) this.bossDefeated(e);
   },
   hurtPlayer(dmg, src) {
-    if (!P || P.hp <= 0 || this.scene !== 'run') return false;
+    if (!P || P.hp <= 0 || (this.scene !== 'run' && !this.hubFight)) return false;
     if (P.iframes > 0 || P.invuln > 0) return false;
     const s = P.stats;
     if ((P.parryT > 0 || P.domainT > 0) && P.hero.onParry) {
@@ -532,12 +533,12 @@ const G = {
     if (s.gilded && this.run) dmg *= 1 - Math.min(0.12, this.run.gold / 10000);
     if (P.guardT > 0 && s.dashGuard) dmg *= 1 - s.dashGuard;
     if (P.exhaustT > 0) dmg *= s.unbound ? 1.8 : 1.6;
-    if (s.coinWard && this.run.gold >= 10) { this.run.gold -= 10; dmg *= 1 - s.coinWard; this.text(P.x + 20, P.y - 40, '-10 金', '#ffcf40', 12); }
+    if (s.coinWard && this.run && this.run.gold >= 10) { this.run.gold -= 10; dmg *= 1 - s.coinWard; this.text(P.x + 20, P.y - 40, '-10 金', '#ffcf40', 12); }
     dmg = Math.max(1, Math.round(dmg));
     P.hp -= dmg; P.iframes = 0.85; P.hurtFlash = 0.3;
     if (s.rally) { P.rally = dmg * s.rally; P.rallyT = 3; }
     if (s.cinder) for (const e of this.enemiesInRange(P.x, P.y, 170)) this.burn(e, 10 * s.cinder);
-    this.run.damageTaken = (this.run.damageTaken || 0) + dmg;
+    if (this.run) this.run.damageTaken = (this.run.damageTaken || 0) + dmg;
     this.shake(9); this.stop(0.06); this.flash('#ff2244', 0.35);
     SFX.play('hurt');
     this.text(P.x, P.y - 55, '-' + dmg, '#ff4d6d', 22);
@@ -560,6 +561,7 @@ const G = {
     return true;
   },
   playerDown() {
+    if (this.hubFight) { this.hubFightDown(); return; }
     const run = this.run;
     if (run.defy > 0) {
       run.defy--; P.hp = Math.round(P.stats.maxHp * 0.5); P.invuln = 2.2;
@@ -820,6 +822,7 @@ const G = {
     SAVE.save();
   },
   clearWorld() {
+    this.hubFight = null;
     this.enemies = []; this.projs = []; this.zones = []; this.pickups = []; this.obstacles = []; this.doors = []; this.npcs = [];
     this.ghosts = []; this.slashes = []; this.rings = []; this.lines = []; this.bolts = []; this.texts = []; this.timers = []; this.says = [];
     this.parts.clear(); this.boss = null; UI.bossBar(null);
@@ -1172,6 +1175,8 @@ const G = {
       shiro: ['Now we\'re talking!', 'Let me show you what a REAL reaper looks like.'],
       tetsu: ['Better. Again.', 'No god ever pushed me this far.'],
       daigo: ['GAHAHA! NOW IT IS A FIGHT!', 'THE GATE DOES NOT FALL!'],
+      duel_sekka: ['You picked the wrong clock to break.', 'I have held one second longer than you have been alive.'],
+      duel_kuroto: ['Better. Now try it without the gods.', 'Nothing given. Everything taken.'],
     }[e.id] || [];
     if (lines[e.phase - 1]) this.say(e, lines[e.phase - 1], 3);
     this.projs = this.projs.filter(p => p.team === 'p');
@@ -1361,7 +1366,7 @@ const G = {
       N.push({ id: 'mirrorobj', x: 1020, y: 380, r: 34, name: 'Guttering Lanterns', prompt: 'Lantern Mirror', draw: drawLanternsOnly, interact: () => UI.mirror() });
       N.push({ id: 'anvilobj', x: 330, y: 660, r: 34, name: 'Ponta\'s Abandoned Forge', prompt: 'Forge', draw: drawAnvilOnly, interact: () => UI.forge() });
       N.push({ id: 'ribbon', x: 400, y: 320, r: 28, name: 'Hanabi\'s Ribbon', prompt: 'Codex', draw: drawRibbon, interact: () => UI.codex() });
-      N.push({ id: 'rift', x: 1000, y: 600, r: 70, name: 'The Rift', prompt: 'Peer into the rift', draw: () => {}, interact: () => UI.toast(pick(['The rift breathes cold air. It is not stable yet. (Next story update.)', 'Far away, someone is complaining about fried tofu.', 'Your shard aches when you stand this close.']), '#c8a8ff', 4) });
+      N.push({ id: 'rift', x: 1000, y: 600, r: 70, name: 'The Rift', prompt: 'Peer into the rift', draw: () => {}, interact: () => UI.toast(pick(['The rift breathes cold air. It is not stable yet.', 'Far away, someone is complaining about fried tofu.', 'Your shard aches when you stand this close.']), '#c8a8ff', 4) });
       if (S.flags.cs2) for (const [id, x] of [['sekka', 905], ['kuroto', 1095]]) if (S.hero !== id) N.push({ id, x, y: 660, r: 28, name: HEROES[id].name, prompt: 'Talk', cast: id, draw: drawNpcChar, interact: () => (S.flags.newcomer === id ? this.talk(id) : UI.dialogue([[id, id === 'sekka' ? 'I am keeping the rift\'s clock. It ticks... irregularly. Go on, Moonbound.' : 'I\'m watching the hole. Go fight something.']])) });
       const dm = new Enemy('dummy', 1240, 780, { noSpawn: true }); this.enemies.push(dm);
       return;
@@ -1391,17 +1396,20 @@ const G = {
     }
     this.npcs = this.npcs.filter(n => !(n.dissolve && n.alpha <= 0));
     if (this.riftOpening) this.riftOpen = Math.min(1, this.riftOpen + dt * 0.45);
+    this.updateFighters(dt);
+    if (this.hubFight) this.updateHubFight(dt);
     if (this.controlLocked) { this.nearNpc = null; return; }
     let near = null, nd = 1e9;
     for (const n of this.npcs) {
       const d = Math.hypot(P.x - n.x, P.y - n.y);
       if (d < n.r + 60 && d < nd) { nd = d; near = n; }
     }
+    if (this.hubFight) near = null; // F is the tag attack during the fight
     this.nearNpc = near;
     if (near && Input.interactHit() && !UI.modal) { SFX.play('ui'); near.interact(near); }
     // collision with npcs
     for (const n of this.npcs) {
-      if (n.id === 'gate') continue;
+      if (n.id === 'gate' || n.fighter) continue;
       const dx = P.x - n.x, dy = P.y - n.y, d = Math.hypot(dx, dy), m = n.r * 0.7 + P.r;
       if (d < m && d > 0.01) { P.x = n.x + dx / d * m; P.y = n.y + dy / d * m; }
     }
@@ -1454,26 +1462,7 @@ const G = {
     );
     this.runScript(steps, () => { S.flags.cs1 = true; SAVE.save(); this.transition(() => this.toHub('afterbreak')); });
   },
-  cutsceneNewcomers() {
-    const S = SAVE.data;
-    this.controlLocked = true;
-    for (const [id, x] of [['sekka', 905], ['kuroto', 1095]]) this.npcs.push({ id, x, y: 660, r: 28, name: HEROES[id].name, prompt: 'Talk', cast: id, draw: drawNpcChar, alpha: 0, appear: true, interact: () => {} });
-    SFX.play('rift', 0.6); this.shake(8);
-    this.runScript([
-      { cam: [1000, 600], wait: 1.8 },
-      { lines: STORY3.newcomers, pre: 0.1 },
-    ], () => {
-      this.controlLocked = true;
-      UI.newcomerChoice(id => {
-        S.flags.newcomer = id; S.heroes[id].unlocked = true; S.flags.cs2 = true; SAVE.save();
-        UI.dialogue(id === 'sekka' ? STORY3.pickSekka : STORY3.pickKuroto, () => {
-          this.controlLocked = false; this.camTarget = null;
-          this.buildHubNpcs();
-          UI.toast(`★ ${HEROES[id].name} is now playable! Visit the Altar of Heroes.`, HEROES[id].pal.scarf, 7);
-        });
-      });
-    });
-  },
+  // cutsceneNewcomers and the tag-team fight live in rift.js
 
   /* ---------------- transitions ---------------- */
   transition(fn) { this.fadeDir = 1; this.fadeCb = fn; },

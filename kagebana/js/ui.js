@@ -239,6 +239,7 @@ const UI = {
     }
     const hint = $('#hint');
     if (this.modal) hint.textContent = '';
+    else if (G.hubFight) hint.textContent = G.hubFight.tag >= 100 ? `TAG READY — press ${keyName(Input.binds().interact[0])} to call ${HEROES[G.hubFight.allyId].name.split(' ')[0]}'s attack` : `Tag attack ${Math.floor(G.hubFight.tag)}%`;
     else if (G.scene === 'hub') hint.textContent = G.nearNpc ? '' : 'WASD move · Mouse aim · LMB attack · RMB special · Space dash · Q ultimate · F interact · Esc menu';
     else if (run && G.doors.length && !G.room.rewardTaken && G.pickups.some(p => p.kind === 'reward')) hint.textContent = 'Claim the reward';
     else if (run && G.doors.length) hint.textContent = 'Choose a door';
@@ -663,8 +664,8 @@ const UI = {
   newcomerChoice(onPick) {
     const card = id => { const h = HEROES[id]; return `<div class="nc-card" data-h="${id}" style="--c:${h.pal.scarf}"><canvas width="160" height="160" data-p="${id}"></canvas><div class="nc-name">${h.name} <span class="jp">${h.jp}</span></div><div class="muted">${h.title}</div><div class="small nc-desc">${esc(h.desc)}</div><div class="small muted">${esc(h.controls)}</div></div>`; };
     const p = this.open(`
-      <h2>Who walks with you? <span class="jp">選択</span></h2>
-      <p class="muted">One will fight beside you now. The other stays to guard the rift — until it opens.</p>
+      <h2>Who do you stand with? <span class="jp">選択</span></h2>
+      <p class="muted">Whoever you choose fights beside you, starting now. Whoever you don't, you fight.</p>
       <div class="nc-row">${card('sekka')}${card('kuroto')}</div>`, null, { noEsc: true, wide: true });
     p.querySelectorAll('canvas[data-p]').forEach(c => this.portrait(c, c.dataset.p));
     p.querySelectorAll('.nc-card').forEach(c => c.onclick = () => { SFX.play('uiok'); this.close(); onPick(c.dataset.h); });

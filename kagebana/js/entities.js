@@ -734,7 +734,7 @@ function BOSS_AI(e, dt) {
   if (e.rest > 0) {
     e.rest -= dt;
     const dd = dist(e, P);
-    const want = d.hover ? 330 : ({ mecha: 260, bakusou: 300, daigo: 190, tamamo: 280 }[e.id] || 210);
+    const want = d.hover ? 330 : ({ mecha: 260, bakusou: 300, daigo: 190, tamamo: 280, duel_sekka: 340, duel_kuroto: 150 }[e.id] || 210);
     if (dd > want + 40) e.walk(e.face, e.spd, dt);
     else if (dd < want - 60) e.walk(e.face + Math.PI, e.spd * 0.7, dt);
     else e.walk(e.face + Math.PI / 2 * e.strafe, e.spd * 0.6, dt);
