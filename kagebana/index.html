@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KAGEBANA — Requiem of the Eighth Moon</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Shippori+Mincho:wght@700;800&family=Zen+Kaku+Gothic+New:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div id="hud-tl">
+      <div id="hero-name"></div>
+      <div id="hp"><div id="hp-fill"></div><div id="hp-text"></div></div>
+      <div id="status"></div>
+      <div class="hud-row">
+        <div id="dashpips"></div>
+        <div id="spcd"><div id="spcd-fill"></div><span id="sp-name"></span></div>
+      </div>
+    </div>
+    <div id="ult"><div id="ult-n">0</div><div class="ult-lbl">ULT</div></div>
+    <div id="hud-tr">
+      <div class="res"><span class="ic" style="color:#ffd56b">金</span><span id="r-gold">0</span></div>
+      <div class="res"><span class="ic" style="color:#6ee7ff">魂</span><span id="r-shards">0</span></div>
+      <div class="res"><span class="ic" style="color:#ffd56b">鍵</span><span id="r-keys">0</span></div>
+      <div class="res"><span class="ic" style="color:#fff3b0">月</span><span id="r-frag">0/8</span></div>
+      <div id="r-loc"></div>
+    </div>
+    <div id="boons"></div>
+    <div id="bossbar" class="hidden">
+      <div id="bb-name"></div>
+      <div id="bb-bar"><div id="bb-lag"></div><div id="bb-fill"></div><div id="bb-ph"></div></div>
+    </div>
+    <div id="hint"></div>
+  </div>
+
+  <div id="banner"></div>
+  <div id="toasts"></div>
+  <div id="cutin"></div>
+
+  <div id="dialogue" class="hidden">
+    <canvas id="dlg-portrait" width="240" height="240"></canvas>
+    <div class="dlg-box">
+      <div id="dlg-name"></div>
+      <div id="dlg-text"></div>
+      <div class="dlg-next">▼</div>
+    </div>
+  </div>
+
+  <div id="modal"><div class="panel"></div></div>
+  <div id="title"></div>
+
+  <script src="js/engine.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/entities.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/ui.js"></script>
+</body>
+</html>
