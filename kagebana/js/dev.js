@@ -22,7 +22,7 @@ const DEV = {
   },
   scene(flags) {
     const f = SAVE.data.flags;
-    for (const k of ['arcEnd', 'cs1', 'cs2', 'newcomer']) delete f[k];
+    for (const k of ['arcEnd', 'cs1', 'cs2', 'newcomer', 'riftAt', 't_open', 't_arrive', 't_rescue', 't_rescueRuns', 't_forge']) delete f[k];
     Object.assign(f, { prologue: true }, flags);
     SAVE.save(); this.startGame(); this.resetState();
     G.scene = 'hub';
@@ -59,9 +59,13 @@ const DEV = {
     log.rivalHpPct = Math.round(b.hp / b.maxHp * 100);
     return log;
   },
+  campOf(id) {
+    const d = BOSSES[id], inCamp = c => CAMPAIGNS[c].acts.some(b => b.boss === id || b.altBoss === id || b.duel === id);
+    return d.god || id === 'omaga' ? 2 : inCamp(3) ? 3 : inCamp(1) ? 1 : 0;
+  },
   fightBoss(id) {
     this.startGame();
-    const d = BOSSES[id], camp = d.god || id === 'omaga' ? 2 : 0;
+    const camp = this.campOf(id);
     G.startRun(camp); G.fadeDir = 0; G.fadeCb = null; G.fadeA = 0;
     G.run.bossFor = G.acts().map(() => id);
     G.enterRoom({ type: 'boss', boss: id });
@@ -98,7 +102,7 @@ const DEV = {
         const H = P.hero;
         for (let i = 0; i < 6; i++) { if (H.attack) H.attack(P); this.sim(0.3); }
         if (H.special) H.special(P); this.sim(1);
-        if (H.swap) { H.swap(P); H.attack(P); H.swap(P); H.attack(P); this.sim(0.5); }
+        if (H.swap) for (let i = 0; i < 3; i++) { H.swap(P); H.attack(P); H.special(P); this.sim(1); }
         if (H.ult) H.ult(P); this.sim(4);
         report.heroes++;
       } catch (e) { this.fail('hero ' + id, e); }
@@ -106,7 +110,7 @@ const DEV = {
     }
     SAVE.data.hero = 'akane';
     for (const id of Object.keys(BOSSES)) {
-      const d = BOSSES[id], camp = d.god || id === 'omaga' ? 2 : BOSSES[id] && CAMPAIGNS[1].acts.some(b => b.boss === id || b.altBoss === id || b.duel === id) ? 1 : 0;
+      const d = BOSSES[id], camp = this.campOf(id);
       let boss;
       try {
         this.arena(camp);
@@ -158,6 +162,9 @@ const DEV = {
     btn('Scene: shrine breaks, rift opens', () => this.scene({ arcEnd: true }));
     btn('Scene: rift entrance + tag team', () => this.scene({ arcEnd: true, cs1: true }));
     btn('Scene: after the rift', () => this.scene({ arcEnd: true, cs1: true, cs2: true, newcomer: 'sekka' }));
+    btn('Scene: rift settled', () => this.scene({ arcEnd: true, cs1: true, cs2: true, newcomer: 'sekka', riftAt: -1 }));
+    btn('Scene: forge relit', () => this.scene({ arcEnd: true, cs1: true, cs2: true, newcomer: 'sekka', t_open: true, t_arrive: true, t_rescue: true, t_rescueRuns: 0 }));
+    btn('Start Tokoyo (first time)', () => { this.scene({ arcEnd: true, cs1: true, cs2: true, newcomer: 'sekka', t_open: true }); G.startRun(3); });
     btn('Start Campaign I', () => { this.startGame(); G.startRun(0); });
     btn('Start Campaign II', () => { this.startGame(); G.startRun(1); });
     btn('Start Campaign III', () => { this.startGame(); G.startRun(2); });

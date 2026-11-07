@@ -341,11 +341,33 @@ class Enemy {
     this.moving = true;
   }
   slowF() { return Math.max(0.35, 1 - 0.11 * this.st.chill); }
+  /* Flying from Kuroto's Grab Throw. Ends on a wall, an obstacle, another foe, or running out of steam. */
+  updateThrown(dt) {
+    const T = this.thrown, speed = 1150;
+    T.t -= dt; this.moving = true;
+    const wall = G.moveSafe(this, Math.cos(T.a) * speed * dt, Math.sin(T.a) * speed * dt);
+    if (Math.random() < 0.5) G.ghostE(this, this.x, this.y);
+    let foe = null;
+    for (const o of G.enemies) {
+      if (o === this || o.dead || o.spawnT > 0 || o.thrown) continue;
+      if (Math.hypot(o.x - this.x, o.y - this.y) < o.r + this.r) { foe = o; break; }
+    }
+    if (!wall && !foe && T.t > 0) return;
+    this.thrown = null;
+    this.st.stun = Math.max(this.st.stun, 0.8);
+    if (!wall && !foe) { G.damageEnemy(this, 25, { slot: 'special' }); return; }
+    G.fxRing(this.x, this.y - this.r, 90, '#c8c8c8', 0.25, 8);
+    G.parts.burst(this.x, this.y - this.r, 18, { color: '#fff3b0', min: 100, max: 420, size: 3 });
+    SFX.play('heavy'); SFX.play('clang', 0.6); G.shake(10); G.stop(0.08);
+    if (foe) G.damageEnemy(foe, 70, { slot: 'special', kb: 320, kbAng: T.a, stun: 0.7, pierceGuard: true });
+    G.damageEnemy(this, 95, { slot: 'special' });
+  }
   disabled() { return this.st.freeze > 0 || this.st.stun > 0; }
   update(dt) {
     this.t += dt; this.moving = false;
     if (this.spawnT > 0) { this.spawnT -= dt; return; }
     this.flash -= dt;
+    if (this.thrown) { this.updateThrown(dt); return; }
     const st = this.st;
     if (st.burnT > 0) {
       st.burnT -= dt; st.burnTick += dt;
@@ -734,7 +756,7 @@ function BOSS_AI(e, dt) {
   if (e.rest > 0) {
     e.rest -= dt;
     const dd = dist(e, P);
-    const want = d.hover ? 330 : ({ mecha: 260, bakusou: 300, daigo: 190, tamamo: 280, duel_sekka: 340, duel_kuroto: 150 }[e.id] || 210);
+    const want = d.hover ? 330 : ({ mecha: 260, bakusou: 300, daigo: 190, tamamo: 280, duel_sekka: 340, duel_kuroto: 150, okina: 270 }[e.id] || 210);
     if (dd > want + 40) e.walk(e.face, e.spd, dt);
     else if (dd < want - 60) e.walk(e.face + Math.PI, e.spd * 0.7, dt);
     else e.walk(e.face + Math.PI / 2 * e.strafe, e.spd * 0.6, dt);
@@ -1005,7 +1027,7 @@ class Proj {
       }
     } else {
       if (Math.hypot(P.x - this.x, P.y - 16 - this.y) < this.r + P.r - 2) {
-        if (G.hurtPlayer(this.dmg, this)) { if (this.slow && P.parryT <= 0) P.slowT = 1.5; if (!this.returning) this.dead = true; }
+        if (G.hurtPlayer(this.dmg, this)) { if (this.slow && P.parryT <= 0 && P.domainT <= 0) P.slowT = 1.5; if (!this.returning) this.dead = true; }
         else if (P.dashT > 0 && !this.grazed) { this.grazed = true; P.ult = Math.min(100, P.ult + 1.5); }
       }
     }

@@ -335,7 +335,7 @@ Object.assign(G, {
   },
   finishNewcomers(id) {
     const S = SAVE.data;
-    S.flags.newcomer = id; S.heroes[id].unlocked = true; S.flags.cs2 = true; SAVE.save();
+    S.flags.newcomer = id; S.heroes[id].unlocked = true; S.flags.cs2 = true; S.flags.riftAt = S.runs; SAVE.save();
     this.controlLocked = false; this.camTarget = null;
     this.enemies = [];
     this.buildHubNpcs();

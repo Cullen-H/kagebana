@@ -48,7 +48,9 @@ const UI = {
       ctx.restore(); return;
     }
     const s = face ? W / 3.3 : W / 5.2;
-    drawChar(ctx, { x: W / 2, y: face ? H * 0.42 + s * 2.6 : H + s * 1.1, s, lookX: 0.15, lookY: 0.9, pal: c.pal, t: performance.now() / 1000, hair: c.hair, acc: c.acc, eyesClosed: c.eyesClosed, mood: mood || null, noShadow: true });
+    const py = face ? H * 0.42 + s * 2.6 : H + s * 1.1;
+    drawChar(ctx, { x: W / 2, y: py, s, lookX: 0.15, lookY: 0.9, pal: c.pal, t: performance.now() / 1000, hair: c.hair, acc: c.acc, eyesClosed: c.eyesClosed, mood: mood || null, noShadow: true });
+    if (c.mask) drawNoMask(ctx, W / 2, py - s * 2.45, s * 0.95, 0.08, false, false);
   },
 
   /* ---------------- title ---------------- */
@@ -135,9 +137,10 @@ const UI = {
     const S = SAVE.data, h = HEROES[S.hero], f = h.forms[S.heroes[S.hero].form], heat = SAVE.heat();
     const C = CAMPAIGNS[camp];
     const p = this.open(`
-      <h2>${camp === 2 ? 'The Stair of Heaven <span class="jp">天の階</span>' : camp ? 'The Black Torii of Yomi <span class="jp">黄泉の鳥居</span>' : 'The Torii of Ascent <span class="jp">昇天の鳥居</span>'}</h2>
-      <div class="camp-tag ${camp ? 'c2' : ''} ${camp === 2 ? 'c3' : ''}">${camp === 2 ? 'FINAL CAMPAIGN' : camp ? 'CAMPAIGN II' : 'CAMPAIGN I'} · ${C.name} <span class="jp">${C.jp}</span></div>
-      ${camp === 2 ? '<div class="c2-warn c3">⚠ A gauntlet of seven corrupted gods, then the Calamity. You begin holding EVERY Kami blessing — each god you free takes its blessings back, so choose your order. Every god is a bullet-hell fight; the Calamity is far worse. Freed gods leave a Godspark and become playable.</div>' : camp ? '<div class="c2-warn">⚠ Foes have +25% HP, +45% damage and act faster. Extra waves, more elites, and every area has a hazard. Spirit Shards ×2, bosses drop 2 Moon Keys.</div>' : ''}
+      <h2>${camp === 3 ? 'The Rift <span class="jp">裂け目</span>' : camp === 2 ? 'The Stair of Heaven <span class="jp">天の階</span>' : camp ? 'The Black Torii of Yomi <span class="jp">黄泉の鳥居</span>' : 'The Torii of Ascent <span class="jp">昇天の鳥居</span>'}</h2>
+      <div class="camp-tag ${camp ? 'c2' : ''} ${camp === 2 ? 'c3' : ''}">${camp === 3 ? 'ARC II · TOKOYO' : camp === 2 ? 'FINAL CAMPAIGN' : camp ? 'CAMPAIGN II' : 'CAMPAIGN I'} · ${C.name} <span class="jp">${C.jp}</span></div>
+      ${camp === 3 ? '<div class="c2-warn">⚠ Another world. Foes have +25% HP, +40% damage and act faster, with extra waves and more elites. The hanging snow can hurt you. Spirit Shards ×2.5, and your Kami\'s blessings still reach you here through your shard.</div>' : ''}
+      ${camp === 2 ? '<div class="c2-warn c3">⚠ A gauntlet of seven corrupted gods, then the Calamity. You begin holding EVERY Kami blessing — each god you free takes its blessings back, so choose your order. Every god is a bullet-hell fight; the Calamity is far worse. Freed gods leave a Godspark and become playable.</div>' : camp === 1 ? '<div class="c2-warn">⚠ Foes have +25% HP, +45% damage and act faster. Extra waves, more elites, and every area has a hazard. Spirit Shards ×2, bosses drop 2 Moon Keys.</div>' : ''}
       <div class="confirm">
         <canvas class="pc" width="140" height="140"></canvas>
         <div>
@@ -150,7 +153,7 @@ const UI = {
         </div>
       </div>
       ${h.devotion ? `<div class="patron-pick"><div class="pp-lbl">Patron Kami${S.heroes.sayo.form === 1 ? ' (choose two)' : ''}</div><div class="pp-row">${KAMI_ORDER.map(k => `<button class="pp ${k === S.patron || (S.heroes.sayo.form === 1 && k === S.patron2) ? 'on' : ''}" data-k="${k}" style="--c:${KAMI[k].color}" title="${KAMI[k].name} — ${KAMI[k].title} · ${KAMI[k].el}"><span>${KAMI[k].glyph}</span><i>${KAMI[k].name}</i></button>`).join('')}</div></div>` : ''}
-      <div class="row-end"><button class="btn ghost" data-close>Not yet</button><button class="btn big" id="go">Begin Ascent</button></div>`);
+      <div class="row-end"><button class="btn ghost" data-close>Not yet</button><button class="btn big" id="go">${camp === 3 ? 'Cross Over' : 'Begin Ascent'}</button></div>`);
     this.portrait($('.pc', p), S.hero);
     p.querySelectorAll('.pp').forEach(b => b.onclick = () => {
       const k = b.dataset.k; SFX.play('ui');
@@ -178,12 +181,12 @@ const UI = {
     });
     const spk = P.spT > 0 ? Math.round((1 - P.spT / (P.spMax || 1)) * 20) : 20;
     this.setH('sp', spk, v => { $('#spcd-fill').style.width = (v * 5) + '%'; $('#spcd').classList.toggle('ready', v >= 20); });
-    this.setH('hero', P.hero.id, () => { $('#sp-name').textContent = P.hero.specialName; $('#hero-name').textContent = P.hero.name; });
+    this.setH('hero', P.hero.id + ':' + P.weapon, () => { $('#sp-name').textContent = P.hero.weapons ? P.hero.weapons[P.weapon].special : P.hero.specialName; $('#hero-name').textContent = P.hero.name; });
     this.setH('gold', run ? run.gold : -1, v => { $('#r-gold').textContent = v; $('#r-gold').parentElement.style.display = run ? '' : 'none'; });
     this.setH('shards', S.shards, v => $('#r-shards').textContent = v);
     this.setH('keys', S.keys, v => $('#r-keys').textContent = v);
     this.setH('frag', S.fragments.length, v => $('#r-frag').textContent = v + '/8');
-    const loc = run && run.camp === 2 ? `Wrath of the Gods · ${run.godsDone.length}/7 gods freed${run.heatTotal ? ' · Phase ' + run.heatTotal : ''}` : run ? `${run.camp ? 'II · ' : ''}${G.acts()[run.act].act} · Room ${run.roomNum}/${ROOMS_PER_ACT}${run.heatTotal ? ' · Phase ' + run.heatTotal : ''}` : 'Shrine of Lanterns';
+    const loc = run && run.camp === 2 ? `Wrath of the Gods · ${run.godsDone.length}/7 gods freed${run.heatTotal ? ' · Phase ' + run.heatTotal : ''}` : run ? `${run.camp === 3 ? 'Tokoyo · ' : run.camp ? 'II · ' : ''}${G.acts()[run.act].act} · Room ${run.roomNum}/${ROOMS_PER_ACT}${run.heatTotal ? ' · Phase ' + run.heatTotal : ''}` : 'Shrine of Lanterns';
     this.setH('loc', loc, v => $('#r-loc').textContent = v);
     const bkey = run ? run.boons.map(b => b.id + b.lv + b.r).join() + '|' + run.relics.join() + '|' + JSON.stringify(run.disc) : '';
     const st = [];
@@ -285,7 +288,10 @@ const UI = {
   dialogue(lines, done) {
     if (!lines || !lines.length) { if (done) done(); return; }
     this.setModal(true);
-    this.dlgLines = lines.map(l => [l[0] === '$hero' ? (G.run ? G.run.hero : SAVE.data.hero) : l[0], l[1], l[2]]);
+    const hero = G.run ? G.run.hero : SAVE.data.hero;
+    // '$h' is for Tokoyo scenes, where Sekka and Kuroto are already speaking: if you play one of them, Akane takes the line
+    const speaker = id => id === '$hero' ? hero : id === '$h' ? (hero === 'sekka' || hero === 'kuroto' ? 'akane' : hero) : id;
+    this.dlgLines = lines.map(l => [speaker(l[0]), l[1], l[2]]);
     this.dlgIdx = -1; this.dlgDone = done;
     this.dlg.className = 'show';
     this.keyHandler = (e) => { if (['Space', 'Enter', 'KeyF', 'KeyE', 'KeyJ'].includes(e.code)) { e.preventDefault(); this.advanceDialogue(); } else if (e.code === 'Escape') { e.preventDefault(); this.dlgIdx = this.dlgLines.length; this.advanceDialogue(true); } };
@@ -394,9 +400,11 @@ const UI = {
   /* ---------------- shop ---------------- */
   shop(ferry) {
     const run = G.run, items = G.room.shop || [];
-    ferry = ferry || !!run.camp;
+    const stall = run.camp === 3;
+    ferry = !stall && (ferry || !!run.camp);
     const p = this.open(`
-      ${ferry ? `<div class="boon-head"><canvas class="kp" width="120" height="120"></canvas><div><div class="kami-name" style="color:#9ee7ff">Sanzu the Ferryman <span class="jp">三途の渡し守</span></div><div class="muted">The river market. Everything costs something.</div><div class="kami-say">“${esc(pick(['Gold is just memory you can spend.', 'I have ferried emperors. You are a better tipper.', 'The current waits for no one. Choose.']))}”</div></div></div>`
+      ${stall ? `<div class="boon-head"><canvas class="kp" width="120" height="120"></canvas><div><div class="kami-name" style="color:#dcecff">Ume's Fan Stall <span class="jp">梅の扇屋</span></div><div class="muted">She is frozen mid-sale, holding out a fan. The prices are chalked on a board. They are high.</div><div class="kami-say">${esc(pick(['Her knee hurts when it rains. It has not rained in a very long time.', 'The coin box is open. Nobody will stop you. Pay anyway.', 'Whatever else is on this stall, it was here that night.']))}</div></div></div>`
+        : ferry ? `<div class="boon-head"><canvas class="kp" width="120" height="120"></canvas><div><div class="kami-name" style="color:#9ee7ff">Sanzu the Ferryman <span class="jp">三途の渡し守</span></div><div class="muted">The river market. Everything costs something.</div><div class="kami-say">“${esc(pick(['Gold is just memory you can spend.', 'I have ferried emperors. You are a better tipper.', 'The current waits for no one. Choose.']))}”</div></div></div>`
         : `<div class="boon-head"><canvas class="kp" width="120" height="120"></canvas><div><div class="kami-name" style="color:#ffd56b">Old Man Udon <span class="jp">うどん爺</span></div><div class="muted">Ramen, sake, trinkets. No refunds.</div><div class="kami-say">“${esc(pick(SHOP_LINES))}”</div></div></div>`}
       <div class="gold-big">金 ${run.gold}</div>
       <div class="shop-list">${items.map((it, i) => {
@@ -404,7 +412,7 @@ const UI = {
         return `<div class="shop-item ${it.sold ? 'sold' : ''} ${can ? '' : 'cant'}" data-i="${i}"><div class="si-icon" style="color:${it.color || '#fff'}">${it.icon}</div><div class="si-body"><div class="si-name">${esc(it.name)}</div><div class="si-desc">${esc(it.desc)}</div></div><div class="si-price">${it.sold ? 'SOLD' : '金 ' + it.price}</div></div>`;
       }).join('')}</div>
       <div class="row-end"><button class="btn ghost" data-close>Leave</button></div>`, null, { wide: true });
-    this.portrait($('.kp', p), ferry ? 'sanzu' : 'udon', 'happy');
+    this.portrait($('.kp', p), stall ? 'ume' : ferry ? 'sanzu' : 'udon', 'happy');
     p.querySelectorAll('.shop-item').forEach(row => row.onclick = () => {
       const it = items[+row.dataset.i];
       if (it.sold || run.gold < it.price || (it.cond && !it.cond())) { SFX.play('uino'); return; }
@@ -702,7 +710,7 @@ const UI = {
     const h = HEROES[sum.hero];
     const mins = Math.floor(sum.time / 60), secs = Math.floor(sum.time % 60);
     const acts = CAMPAIGNS[sum.camp || 0].acts;
-    const where = sum.victory ? (sum.camp === 2 ? 'The Calamity is sealed — for now' : sum.camp ? 'The Black Sun is broken' : sum.trueEnd ? 'The Eighth Moon is restored' : 'Mugen defeated') : `Fell in ${acts[sum.act].name}, room ${sum.room}`;
+    const where = sum.victory ? (sum.camp === 3 ? 'The festival is over, for now' : sum.camp === 2 ? 'The Calamity is sealed — for now' : sum.camp ? 'The Black Sun is broken' : sum.trueEnd ? 'The Eighth Moon is restored' : 'Mugen defeated') : `Fell in ${acts[sum.act].name}, room ${sum.room}`;
     const p = this.open(`
       <div class="res-head ${sum.victory ? 'win' : 'lose'}">${sum.victory ? (sum.trueEnd ? '真 · TRUE VICTORY' : '勝利 · VICTORY') : '敗北 · DEFEATED'}</div>
       <p class="center muted">${esc(where)}</p>

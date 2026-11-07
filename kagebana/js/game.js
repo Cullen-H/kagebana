@@ -460,6 +460,7 @@ const G = {
   killEnemy(e, silent) {
     if (e.dead) return;
     e.dead = true;
+    if (e.def.worn) this.wornFreed(e);
     const s = P ? P.stats : null;
     this.parts.burst(e.x, e.y - e.r, e.isBoss ? 60 : 16, { color: e.def.col || '#fff', min: 80, max: 360, size: 3 });
     this.parts.burst(e.x, e.y - e.r, 6, { type: 'smoke', color: '#222', min: 20, max: 90, size: 6 });
@@ -508,9 +509,12 @@ const G = {
   },
   hurtPlayer(dmg, src) {
     if (!P || P.hp <= 0 || (this.scene !== 'run' && !this.hubFight)) return false;
+    const parrying = (P.parryT > 0 || P.domainT > 0) && P.hero.onParry;
+    // A raised mirror catches every projectile, even in the instant right after another parry.
+    if (parrying && src instanceof Proj) { src.dead = true; P.hero.onParry(P, src); return true; }
     if (P.iframes > 0 || P.invuln > 0) return false;
     const s = P.stats;
-    if ((P.parryT > 0 || P.domainT > 0) && P.hero.onParry) {
+    if (parrying) {
       let foe = src;
       if (src instanceof Zone) foe = src.owner || this.nearestEnemy(P.x, P.y, 400);
       P.hero.onParry(P, src instanceof Proj ? src : foe);
@@ -800,12 +804,12 @@ const G = {
     const B = R.biome;
     const c2 = !!run.camp;
     if (run.camp === 2) Music.play(spec.type === 'final' ? 'calamity' : spec.type === 'god' ? 'godfight' : 'heaven');
-    else Music.play(spec.type === 'boss' ? (B.id === 'palace' ? 'final' : B.id === 'blacksun' ? 'sunfinal' : c2 ? 'boss2' : 'boss') : spec.type === 'duel' ? 'boss' : B.music);
+    else Music.play(spec.type === 'boss' ? (B.bossMusic || (B.id === 'palace' ? 'final' : B.id === 'blacksun' ? 'sunfinal' : c2 ? 'boss2' : 'boss')) : spec.type === 'duel' ? 'boss' : B.music);
     if (P.stats.interest && run.gold > 0) { const g = Math.min(60, Math.floor(run.gold * P.stats.interest)); if (g > 0) this.after(0.8, () => { run.gold += g; this.text(P.x, P.y - 60, '+' + g + ' 金 interest', '#ffcf40', 14); }); }
     R.hazardT = 3;
     if (spec.type === 'shop' && P.stats.shopHeal) this.after(0.5, () => P.heal(P.stats.maxHp * 0.25));
     if (run.camp === 2 && spec.actStart) UI.banner('Wrath of the Gods', '神々の怒り — choose which god to free first', 'act');
-    else if (spec.actStart || spec.nextAct) UI.banner(B.act + ' — ' + B.name, (c2 ? 'CAMPAIGN II · ' : '') + B.jp, 'act');
+    else if (spec.actStart || spec.nextAct) UI.banner(B.act + ' — ' + B.name, (run.camp === 3 ? 'TOKOYO · ' : c2 ? 'CAMPAIGN II · ' : '') + B.jp, 'act');
     if (spec.type === 'combat' || spec.type === 'elite') {
       R.waves = this.genWaves(spec); R.wave = -1; R.waveDelay = 1.0;
     } else if (spec.type === 'boss' || spec.type === 'duel' || spec.type === 'god' || spec.type === 'final') {
@@ -818,6 +822,7 @@ const G = {
       const tips = { 1: 'Red shapes on the ground are incoming attacks — step out, or dash (Space) through them.', 2: 'Hit enemies to charge your Ultimate (bottom right). Press Q when it glows.', 3: 'Door symbols show the reward waiting beyond. Kanji doors are Kami blessings.' };
       if (tips[run.roomNum]) this.after(1.6, () => UI.toast(tips[run.roomNum], '#ffd56b', 6));
     }
+    if (run.camp === 3) this.tokoyoEnter(spec);
     SAVE.data.bestDepth = Math.max(SAVE.data.bestDepth, run.act * ROOMS_PER_ACT + run.roomNum);
     SAVE.save();
   },
@@ -951,10 +956,17 @@ const G = {
       const vert = Math.random() < 0.5;
       if (vert) G.addZone({ shape: 'line', x: clamp(P.x, R.x0 + 80, R.x0 + R.w - 80), y: R.y0, ang: Math.PI / 2, len: R.h, w: 90, warn: 1.2, dmg: dm * 1.3, color: '#ffcf40' });
       else G.addZone({ shape: 'line', x: R.x0, y: clamp(P.y, R.y0 + WALL_TOP + 40, R.y0 + R.h - 60), ang: 0, len: R.w, w: 90, warn: 1.2, dmg: dm * 1.3, color: '#ffcf40' });
+    } else if (hz === 'hangsnow') {
+      R.hazardT = 4.5;
+      for (let i = 0; i < 3; i++) {
+        const p = i ? this.clampToArena(P.x + rand(-240, 240), P.y + rand(-190, 190), 50) : P;
+        G.addZone({ shape: 'circle', x: p.x, y: p.y, r: 62, warn: 1.1, dmg: dm, color: '#dcecff', onFire: z => G.parts.burst(z.x, z.y - 10, 12, { color: '#eef6ff', min: 60, max: 220, size: 3 }) });
+      }
     }
   },
   updateRoom(dt) {
     const R = this.room;
+    if (this.run && this.run.camp === 3) this.tokoyoTick(dt);
     if (R && (R.type === 'combat' || R.type === 'elite' || R.type === 'boss') && !R.cleared) this.updateHazard(dt);
     if (!R || R.cleared || !(R.type === 'combat' || R.type === 'elite')) return;
     const alive = this.enemies.filter(e => !e.dead).length;
@@ -1016,6 +1028,7 @@ const G = {
       if (this.run.godsDone.length === KAMI_ORDER.length && !this.run.allFreedSaid) { this.run.allFreedSaid = true; this.after(0.8, () => UI.dialogue(STORY3.allFreed)); }
       return;
     }
+    if (this.run.camp === 3) { this.tokoyoStation(spec); return; }
     if (this.run.camp) {
       if (spec.type === 'shop') {
         this.npcs.push({ id: 'ferry', x: cx, y: cy, r: 60, name: 'Sanzu\'s Ferry Market', prompt: 'Trade', draw: drawFerry, interact: () => UI.shop(true) });
@@ -1079,7 +1092,7 @@ const G = {
       return left.map(k => ({ type: 'god', boss: 'god_' + k, kami: k }));
     }
     if (this.room.type === 'boss') {
-      if (run.act >= 3) return [];
+      if (run.act >= this.acts().length - 1) return [];
       return [{ type: 'combat', reward: { t: 'boon', k: pick(KAMI_ORDER) }, nextAct: true, label: 'Ascend to ' + this.acts()[run.act + 1].act }];
     }
     if (next === ROOMS_PER_ACT - 1) return [{ type: 'shop' }, { type: 'spring' }];
@@ -1154,7 +1167,9 @@ const G = {
     else { const arr = BOSS_TALK[id]; lines = arr[Math.min(meets, arr.length - 1)]; }
     S.bossMeets[id] = meets + 1;
     SFX.play('roar');
+    if (id === 'okina') this.okinaIntro(meets);
     this.after(0.8, () => UI.dialogue(lines, () => {
+      if (id === 'okina') { this.dismissAllies(); this.camTarget = null; }
       boss.intro = 0.4; this.controlLocked = false;
       UI.banner(BOSSES[id].duel ? 'DUEL — ' + BOSSES[id].name : BOSSES[id].name, BOSSES[id].jp + ' — ' + BOSSES[id].title, 'boss');
     }));
@@ -1177,6 +1192,7 @@ const G = {
       daigo: ['GAHAHA! NOW IT IS A FIGHT!', 'THE GATE DOES NOT FALL!'],
       duel_sekka: ['You picked the wrong clock to break.', 'I have held one second longer than you have been alive.'],
       duel_kuroto: ['Better. Now try it without the gods.', 'Nothing given. Everything taken.'],
+      okina: ['Everyone is here. Everyone is here. No one has gone home.', 'Stay. Stay for the last dance. It is always the last dance. Stay —'],
     }[e.id] || [];
     if (lines[e.phase - 1]) this.say(e, lines[e.phase - 1], 3);
     this.projs = this.projs.filter(p => p.team === 'p');
@@ -1192,6 +1208,7 @@ const G = {
     SFX.play('boom'); SFX.play('bell');
     this.parts.burst(e.x, e.y - 30, 80, { type: 'petal', color: '#ffd1dc', min: 60, max: 420, life: 2, size: 4, drag: 1 });
     if (id === 'thousandth') { this.after(0.6, () => this.trueVictory()); return; }
+    if (id === 'okina') this.okinaFalls(e);
     if (run.camp && SEALS.some(x => x.id === id) && !(S.seals || []).includes(id)) { S.seals = S.seals || []; S.seals.push(id); this.after(2.5, () => UI.toast(`☀ BLACK SUN SEAL — ${SEALS.find(x => x.id === id).name} (${S.seals.length}/4)`, '#ffcf40', 5)); }
     S.bossKills[id] = (S.bossKills[id] || 0) + 1;
     const kills = S.bossKills[id];
@@ -1213,6 +1230,7 @@ const G = {
         if (frag) this.awardFragment(frag);
         if (id === 'mugen') { this.mugenDefeated(); return; }
         if (id === 'kurohi') { this.sunDefeated(); return; }
+        if (id === 'okina') { this.okinaDefeated(); return; }
         this.addKeys(run.camp ? 2 : 1);
         if (BOSSES[id].duel) { run.duelDone[run.act] = true; this.giveRelic(); }
         const v = this.addShards(35 + run.act * 20);
@@ -1323,7 +1341,7 @@ const G = {
   /* ---------------- hub ---------------- */
   makeHubRoom() {
     const broken = SAVE.data && SAVE.data.flags.cs1;
-    this.hubBreak = broken ? 1 : 0; this.riftOpen = broken ? 1 : 0; this.riftOpening = false;
+    this.hubBreak = broken ? (SAVE.data.flags.t_rescue ? 0.8 : 1) : 0; this.riftOpen = broken ? 1 : 0; this.riftOpening = false;
     this.room = { x0: 0, y0: 0, w: 1400, h: 960, biome: broken
       ? { id: 'hub', name: 'Shattered Shrine', floor: '#16141c', floor2: '#1c1924', line: '#2a2236', wall: '#050408', accent: '#9a6aff', amb: 'void', prop: 'none', tint: 'rgba(70,30,120,0.12)' }
       : { id: 'hub', name: 'Shrine of Lanterns', floor: '#1c1a26', floor2: '#24212f', line: '#2f2a3e', wall: '#0b0a10', accent: '#ffb04d', amb: 'petal', prop: 'none' }, type: 'hub', hub: true };
@@ -1343,6 +1361,7 @@ const G = {
     UI.showHud(true);
     if (S.flags.arcEnd && !S.flags.cs1) { this.after(0.8, () => this.cutsceneBreak()); return; }
     if (S.flags.cs1 && !S.flags.cs2) { this.after(0.8, () => this.cutsceneNewcomers()); return; }
+    if (this.tokoyoHubScene()) return;
     if (!S.flags.prologue) { S.flags.prologue = true; SAVE.save(); this.after(0.5, () => UI.dialogue(STORY.prologue, () => UI.toast('WASD move · Mouse aim · LMB attack · RMB special · Space dash · Q ultimate · F interact', '#fff', 8))); }
     else if (reason === 'death' && !S.flags.firstDeath) { S.flags.firstDeath = true; SAVE.save(); this.after(0.5, () => UI.dialogue(STORY.firstDeath)); }
   },
@@ -1364,10 +1383,11 @@ const G = {
       N.push({ id: 'pact', x: 980, y: 190, r: 40, name: 'Moon Phase Stone', prompt: 'Moon Phase Pact', draw: drawPactStone, interact: () => UI.pact() });
       N.push({ id: 'altar', x: 700, y: 400, r: 44, name: 'Altar of Heroes', prompt: 'Change Hero', draw: drawAltar, interact: () => UI.altar() });
       N.push({ id: 'mirrorobj', x: 1020, y: 380, r: 34, name: 'Guttering Lanterns', prompt: 'Lantern Mirror', draw: drawLanternsOnly, interact: () => UI.mirror() });
-      N.push({ id: 'anvilobj', x: 330, y: 660, r: 34, name: 'Ponta\'s Abandoned Forge', prompt: 'Forge', draw: drawAnvilOnly, interact: () => UI.forge() });
+      if (S.flags.t_rescue) N.push(this.pontaNpc());
+      else N.push({ id: 'anvilobj', x: 330, y: 660, r: 34, name: 'Ponta\'s Abandoned Forge', prompt: 'Forge', draw: drawAnvilOnly, interact: () => UI.forge() });
       N.push({ id: 'ribbon', x: 400, y: 320, r: 28, name: 'Hanabi\'s Ribbon', prompt: 'Codex', draw: drawRibbon, interact: () => UI.codex() });
-      N.push({ id: 'rift', x: 1000, y: 600, r: 70, name: 'The Rift', prompt: 'Peer into the rift', draw: () => {}, interact: () => UI.toast(pick(['The rift breathes cold air. It is not stable yet.', 'Far away, someone is complaining about fried tofu.', 'Your shard aches when you stand this close.']), '#c8a8ff', 4) });
-      if (S.flags.cs2) for (const [id, x] of [['sekka', 905], ['kuroto', 1095]]) if (S.hero !== id) N.push({ id, x, y: 660, r: 28, name: HEROES[id].name, prompt: 'Talk', cast: id, draw: drawNpcChar, interact: () => (S.flags.newcomer === id ? this.talk(id) : UI.dialogue([[id, id === 'sekka' ? 'I am keeping the rift\'s clock. It ticks... irregularly. Go on, Moonbound.' : 'I\'m watching the hole. Go fight something.']])) });
+      N.push(this.riftNpc());
+      if (S.flags.cs2) for (const [id, x] of [['sekka', 905], ['kuroto', 1095]]) if (S.hero !== id) N.push({ id, x, y: 660, r: 28, name: HEROES[id].name, prompt: 'Talk', cast: id, draw: drawNpcChar, interact: () => (S.flags.newcomer === id || S.flags.t_rescue ? this.talk(id) : UI.dialogue([[id, id === 'sekka' ? 'I am keeping the rift\'s clock. It ticks... irregularly. Go on, Moonbound.' : 'I\'m watching the hole. Go fight something.']])) });
       const dm = new Enemy('dummy', 1240, 780, { noSpawn: true }); this.enemies.push(dm);
       return;
     }
@@ -1493,7 +1513,7 @@ const G = {
   },
   updateAmb(rdt) {
     const B = this.scene === 'title' ? { amb: 'petal' } : this.biome();
-    const want = B.amb === 'rain' ? 90 : 55;
+    const want = B.amb === 'rain' || B.amb === 'hang' ? 90 : 55;
     while (this.amb.length < want) this.amb.push(this.newAmb(B.amb, true));
     for (let i = 0; i < this.amb.length; i++) {
       const a = this.amb[i];
@@ -1507,6 +1527,7 @@ const G = {
     if (type === 'ember') { a.y = init ? rand(0, h) : h + 20; a.vx = rand(-15, 15); a.vy = rand(-60, -20); }
     else if (type === 'rain') { a.vx = -120; a.vy = rand(700, 900); a.x = rand(0, w + 200); }
     else if (type === 'snow') { a.vx = rand(-20, 30); a.vy = rand(30, 80); }
+    else if (type === 'hang') a.y = rand(0, h);
     else if (type === 'void') { a.y = init ? rand(0, h) : h + 20; a.vx = rand(-10, 10); a.vy = rand(-35, -10); }
     else if (type === 'bubble' || type === 'steam') { a.y = init ? rand(0, h) : h + 20; a.vx = rand(-12, 12); a.vy = type === 'steam' ? rand(-70, -30) : rand(-50, -20); }
     else if (type === 'sunash') { a.vx = rand(-30, 30); a.vy = rand(20, 60); }
@@ -1549,7 +1570,7 @@ const G = {
     // depth sorted entities
     const list = [];
     for (const o of this.obstacles) list.push({ y: o.y, d: () => drawObstacle(ctx, o, B, this.t) });
-    for (const n of this.npcs) list.push({ y: n.y, d: () => { const fa = n.alpha !== undefined && n.alpha < 1; if (fa) { ctx.save(); ctx.globalAlpha = Math.max(0, n.alpha); } n.draw(ctx, n, this.t); if (n.extra) n.extra(ctx, n, this.t); if (fa) ctx.restore(); } });
+    for (const n of this.npcs) list.push({ y: n.drawY === undefined ? n.y : n.drawY, d: () => { const fa = n.alpha !== undefined && n.alpha < 1; if (fa) { ctx.save(); ctx.globalAlpha = Math.max(0, n.alpha); } n.draw(ctx, n, this.t); if (n.extra) n.extra(ctx, n, this.t); if (fa) ctx.restore(); } });
     for (const e of this.enemies) list.push({ y: e.y, d: () => e.draw(ctx) });
     for (const g of this.ghosts) list.push({ y: g.y - 1, d: () => this.drawGhost(ctx, g) });
     if (P && (P.hp > 0 || this.scene === 'hub')) list.push({ y: P.y, d: () => P.draw(ctx) });
@@ -1575,6 +1596,7 @@ const G = {
     }
     if (this.scene === 'run' && this.room.spec && this.npcs.length && !UI.modal) {
       for (const n of this.npcs) {
+        if (n.scenery) continue;
         const d = Math.hypot(P.x - n.x, P.y - n.y);
         if (d < n.r + 70) {
           this.nearNpc = n;
@@ -1596,6 +1618,7 @@ const G = {
       if (a.type === 'ember') { ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,${120 + Math.sin(a.t * 3) * 40 | 0},40,${0.5 + Math.sin(a.t * 5) * 0.3})`; circ(ctx, a.x + Math.sin(a.t) * 10, a.y, a.s); }
       else if (a.type === 'rain') { ctx.strokeStyle = 'rgba(160,140,255,.22)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(a.x + a.vx * 0.03, a.y + a.vy * 0.03); ctx.stroke(); }
       else if (a.type === 'snow') { ctx.fillStyle = 'rgba(240,250,255,.75)'; circ(ctx, a.x + Math.sin(a.t * 1.5) * 12, a.y, a.s * 1.1); }
+      else if (a.type === 'hang') { const k = a.s / 3, px = a.x - this.cam.x * k, py = a.y - this.cam.y * k; ctx.fillStyle = 'rgba(235,245,255,.7)'; circ(ctx, ((px % this.w) + this.w) % this.w, ((py % this.h) + this.h) % this.h, a.s * 0.9); }
       else if (a.type === 'void') { ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(192,132,255,${0.3 + Math.sin(a.t * 2) * 0.2})`; circ(ctx, a.x, a.y, a.s * 1.2); }
       else if (a.type === 'bubble') { ctx.strokeStyle = 'rgba(160,230,255,.45)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(a.x + Math.sin(a.t * 2) * 6, a.y, a.s * 2, 0, TAU); ctx.stroke(); }
       else if (a.type === 'steam') { ctx.fillStyle = 'rgba(240,230,210,.06)'; circ(ctx, a.x, a.y, a.s * 10); }
@@ -1886,6 +1909,8 @@ function drawObstacle(ctx, o, B, t) {
     for (let i = 0; i < 5; i++) { const fx = x + (i - 2) * r * 0.3, h = r * (1.6 + Math.sin(t * 8 + i * 2) * 0.4); ctx.fillStyle = 'rgba(255,140,40,.55)'; ell(ctx, fx, y - r * 0.8 - h / 2, r * 0.25, h / 2); }
     ctx.fillStyle = 'rgba(255,120,30,.12)'; circ(ctx, x, y - r * 1.5, r * 2.2);
     ctx.restore();
+  } else if (o.kind === 'frozen') {
+    drawTokoyoProp(ctx, o, x, y, r, t);
   } else {
     ctx.fillStyle = '#555'; circ(ctx, x, y - r * 0.5, r);
   }
@@ -1955,7 +1980,7 @@ function drawNpcChar(ctx, n, t) {
     ctx.save(); ctx.translate(n.x + 14, n.y - 14); ctx.rotate(0.6 + sw); ell(ctx, 10, 0, 18, 8); ctx.fillStyle = '#fff'; ell(ctx, 24, 0, 6, 5); ctx.restore();
   }
   drawChar(ctx, { x: n.x, y: n.y, s: 13, lookX: near ? dx / l : Math.sin(t * 0.5) * 0.3, lookY: near ? dy / l : 0.8, pal: c.pal, t, moving: false, hair: c.hair, acc: c.acc, eyesClosed: c.eyesClosed, mood: 'happy' });
-  const unread = (TALKS[n.cast] || []).some(e => !SAVE.data.talked[e.id] && e.cond(SAVE.data));
+  const unread = (TALKS[n.talkKey || n.cast] || []).some(e => !SAVE.data.talked[e.id] && e.cond(SAVE.data));
   if (unread) {
     ctx.save(); ctx.fillStyle = '#ffd56b'; ctx.font = '900 22px sans-serif'; ctx.textAlign = 'center';
     ctx.fillText('!', n.x, n.y - 62 + Math.sin(t * 5) * 3); ctx.restore();
@@ -2130,6 +2155,7 @@ G.buildFloor = function (R) {
     else if (B.id === 'blacksun') { x.fillStyle = 'rgba(255,170,60,.45)'; x.fillRect(wx - 2, Y0 + 6, 4, WALL_TOP - 30); }
     else if (B.id === 'heaven') { x.fillStyle = '#c8a050'; x.fillRect(wx - 5, Y0 + 8, 10, WALL_TOP - 30); x.fillStyle = 'rgba(255,220,140,.4)'; circ(x, wx, Y0 + 14, 8); }
     else if (B.id === 'calamity') { x.fillStyle = 'rgba(91,43,138,.6)'; x.beginPath(); x.moveTo(wx - 16, Y0 + WALL_TOP - 20); x.lineTo(wx, Y0 + 6); x.lineTo(wx + 16, Y0 + WALL_TOP - 20); x.fill(); }
+    else if (B.id === 'tokoyo') { x.fillStyle = '#2a2430'; x.fillRect(wx - 30, Y0 + 10, 60, 3); x.fillStyle = '#e8863a'; ell(x, wx, Y0 + 32, 12, 16); x.fillStyle = 'rgba(255,160,70,.18)'; circ(x, wx, Y0 + 32, 28); }
     else { x.fillStyle = '#c8302c'; x.fillRect(wx - 3, Y0 + 20, 6, WALL_TOP - 40); }
   }
   // outer decoration
@@ -2146,6 +2172,7 @@ G.buildFloor = function (R) {
     else if (B.id === 'blacksun') { x.fillStyle = 'rgba(255,120,30,.18)'; circ(x, px, py, 4 + rnd() * 16); }
     else if (B.id === 'heaven') { x.fillStyle = 'rgba(255,240,210,.12)'; ell(x, px, py, 40 + rnd() * 60, 14 + rnd() * 16); }
     else if (B.id === 'calamity') { x.fillStyle = 'rgba(91,43,138,.15)'; circ(x, px, py, 6 + rnd() * 20); }
+    else if (B.id === 'tokoyo') { x.fillStyle = 'rgba(220,235,250,.14)'; circ(x, px, py, 10 + rnd() * 34); }
     else { x.fillStyle = 'rgba(255,183,200,.25)'; circ(x, px, py, 20 + rnd() * 40); }
   }
   return { c, pad, w: W, h: H };

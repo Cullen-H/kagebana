@@ -581,7 +581,7 @@ const STORY = {
 // Hub conversations. First matching unseen entry plays; otherwise a random idle line.
 const TALKS = {
   hanabi: [
-    { id: 'h1', cond: s => s.runs >= 2, lines: [['hanabi', 'You know, most Moonbound give up after three or four deaths. You\'re weirdly persistent.'], ['$hero', 'Is that a compliment?'], ['hanabi', 'It\'s an observation! ...okay, it\'s a compliment.', 'happy']] },
+    { id: 'h1', cond: s => s.runs >= 2, lines: [['hanabi', 'You know, most people would give up after three or four deaths. You\'re weirdly persistent.'], ['$hero', 'Is that a compliment?'], ['hanabi', 'It\'s an observation! ...okay, it\'s a compliment.', 'happy']] },
     { id: 'h2', cond: s => (s.bossKills.gekkou || 0) >= 1, lines: [['hanabi', 'That ronin in the Grove — Gekkou. Did he... say anything to you?'], ['$hero', 'He called me "little blossom". Like he knew me.'], ['hanabi', 'Hmm. The Hollow keep echoes of who they were. Beat him again. Maybe the echo gets louder.']] },
     { id: 'h3', cond: s => (s.bossKills.mecha || 0) >= 1, lines: [['hanabi', 'Ponta has been sobbing into his tea for an hour. Something about "my precious Onigiri". You wouldn\'t know anything about that?'], ['$hero', 'The giant robot tried to step on me.'], ['hanabi', 'Ahh. Yes. That would do it.']] },
     { id: 'h4', cond: s => (s.bossKills.shirahime || 0) >= 1, lines: [['hanabi', 'The Snow Empress... she wasn\'t always cruel. She used to make snow fall softly on the harvest festival. Kids would catch it on their tongues.'], ['hanabi', 'Whatever Mugen took from her, it must have been something precious.']] },
@@ -620,7 +620,7 @@ const TALKS = {
     [['ponta', 'Hit the training dummy! It\'s tougher than it looks! (It is exactly as tough as it looks.)']],
   ],
   rei: [
-    { id: 'r1', cond: () => true, lines: [['rei', 'Took you long enough. I\'ve been dead for, like, three loops waiting for you to show up.'], ['akane', 'Rei?! You\'re Moonbound too?'], ['rei', 'Apparently. Hanabi says a shard hit me the same night as you. Guess even fate thinks I\'m your rival.', 'happy'], ['rei', 'Use me if you want. These gauntlets don\'t do subtle.']] },
+    { id: 'r1', cond: () => true, lines: [['rei', 'Took you long enough. I\'ve been dead for, like, three loops waiting for you to show up.'], ['akane', 'Rei?! You\'re Moonbound too?'], ['rei', 'Apparently. Hanabi says it\'s your shard doing it. Anyone who fights beside you gets dragged back too. So I can\'t even die without you getting the credit.', 'happy'], ['rei', 'Use me if you want. These gauntlets don\'t do subtle.']] },
     { id: 'r2', cond: s => s.runs >= 8, lines: [['rei', 'Hey. When we were kids, you used to beat me in every sparring match. Every one.'], ['rei', 'I\'ve been getting a little of that back each time I die. The memories, I mean. Not the losses. ...Okay, also the losses.']] },
     { id: 'r3', cond: s => (s.clearsByHero.rei || 0) >= 1, lines: [['rei', 'I punched an Emperor in the face. Childhood dream: achieved.', 'happy']] },
   ],
@@ -740,7 +740,7 @@ const SHOP_LINES = ['Ramen! Hot ramen! Heals body and soul!', 'Ah, Moonbound! Th
 
 const LORE = [
   { id: 'l_moon', title: 'The Eight Moons', cond: () => true, text: 'Seven moons rule the tides, seasons, dreams, sleep, wine, war and love. The eighth held memory — every name, every face, every story. When it shattered, the world began to forget itself.' },
-  { id: 'l_moonbound', title: 'The Moonbound', cond: s => s.runs >= 1, text: 'Those struck by a falling moon-shard cannot truly die. The shard drags their soul back to the nearest shrine — but each return costs a sliver of memory.' },
+  { id: 'l_moonbound', title: 'The Moonbound', cond: s => s.runs >= 1, text: 'The shard in Akane\'s heart does one thing: it will not let her stay dead. It drags her soul back to the shrine, and each return costs a sliver of memory. Its pull reaches anyone who fights beside her. They come back too, along a thinner thread, and they pay the same price.' },
   { id: 'l_hollow', title: 'The Hollow', cond: s => s.runs >= 3, text: 'Souls emptied of memory by Mugen. They are not evil — they are blank. Some retain echoes: a habit, a song, a stance with a sword.' },
   { id: 'l_kami', title: 'The Six Kami', cond: s => s.runs >= 2, text: 'Hinome, Raika, Tsukiyo, Mizuha, Kazane and Shuten. Without the Eighth Moon, they cannot walk the world, but they can pour their power into a willing vessel.' },
   { id: 'l_gekkou', title: 'Gekkou of the Plum Dojo', cond: s => (s.bossKills.gekkou || 0) >= 3, text: 'A swordsmith and teacher who forged Benizakura for his only student. When the moon broke, he went into the grove to protect his village — and never came out.' },
@@ -1338,7 +1338,7 @@ Object.assign(HEROES, {
     pal: { hair: '#a8c8ff', hair2: '#5a78b8', skin: '#fdf0ea', outfit: '#2a2a3a', outfit2: '#14141e', eye: '#e8d07a', accent: '#e8d07a', scarf: '#7ab0ff' },
     hair: 'hime', acc: 'ribbon', base: { maxHp: 110, speed: 295 }, parrier: true,
     specialName: 'Riposte: Shattered Reflection', specialCd: 1.2, ultName: 'Mirror Domain', ultJp: '八咫鏡・映し世', ultSub: 'Mirror Domain',
-    controls: 'PARRY HERO. LMB raises the mirror for a split second — any hit during it is PARRIED: negated, projectiles reflected, and answered with a counter-burst (+1 Mirror shard). RMB spends all shards on a lunging riposte · Q 6s of automatic parries',
+    controls: 'PARRY HERO. LMB raises the mirror for a split second — any hit during it is PARRIED: negated, projectiles reflected, and answered with a counter-burst (+1 Mirror shard). A landed parry has no cooldown. RMB spends all shards on a lunging riposte · Q 6s of automatic parries',
     forms: [
       { name: 'Form of Yata', desc: 'The mirror that showed the Sun her own face.', cost: 0, apply() {} },
       { name: 'Form of the Cracked Mirror', desc: 'Parry window 60% longer, but counter-bursts deal 25% less.', cost: 2, apply(s) { s.parryWin = 1.6; s.counterMult = 0.75; } },
@@ -1353,21 +1353,29 @@ Object.assign(HEROES, {
     },
     onParry(p, src) {
       const S = p.stats;
-      p.parryT = 0; p.iframes = Math.max(p.iframes, 0.3); p.atkCd = Math.min(p.atkCd, 0.08);
-      p.shards = Math.min(S.shardMax || 5, (p.shards || 0) + 1);
-      G.hitCircle(p.x, p.y, 145, 60 * (S.counterMult || 1), { slot: 'attack', kb: 380, stun: 1.0 });
+      // A landed parry has no cooldown: the mirror stays up and can be raised again immediately.
+      p.parryT = 0.24 * (S.parryWin || 1); p.iframes = Math.max(p.iframes, 0.3); p.atkCd = 0;
       if (src && src.def && !src.dead && !src.isBoss) src.st.stun = Math.max(src.st.stun, 1.2);
+      // Every projectile reflects, but the burst and its rewards are limited to one per moment,
+      // so a wall of bullets can't deal 60 damage per bullet or refill the ultimate on its own.
+      const now = G.t, big = !(now - (p.lastBurstT === undefined ? -9 : p.lastBurstT) < 0.25);
+      if (big) {
+        p.lastBurstT = now;
+        p.shards = Math.min(S.shardMax || 5, (p.shards || 0) + 1);
+        G.hitCircle(p.x, p.y, 145, 60 * (S.counterMult || 1), { slot: 'attack', kb: 380, stun: 1.0 });
+      }
       if (src instanceof Proj) {
         const tg = (src.owner && !src.owner.dead) ? src.owner : G.nearestEnemy(p.x, p.y, 900);
         const a = tg ? angTo(p, tg) : Math.atan2(-src.vy, -src.vx);
         G.pProj({ x: p.x, y: p.y - 18, ang: a, speed: 900, dmg: Math.max(30, src.dmg * 2), slot: 'attack', r: 12, pierce: 2, life: 1.2, kind: 'orb', color: '#e8d07a', kb: 160 });
       }
+      G.parts.burst(p.x, p.y - 20, big ? 16 : 5, { type: 'shard', color: '#e8f4ff', min: 100, max: 320, size: 3 });
+      if (!big) return;
       if (p.domainT > 0) p.heal(2, true);
+      else p.ult = Math.min(100, p.ult + 4); // Mirror Domain can't recharge itself
       G.fxRing(p.x, p.y, 145, '#e8f4ff', 0.3, 12); G.flash('#e8f4ff', 0.18);
-      G.parts.burst(p.x, p.y - 20, 16, { type: 'shard', color: '#e8f4ff', min: 100, max: 320, size: 3 });
       G.text(p.x, p.y - 70, 'PARRY!', '#e8f4ff', 20);
       SFX.play('parry'); G.stop(0.1); G.shake(6);
-      p.ult = Math.min(100, p.ult + 4);
     },
     special(p) {
       const S = p.stats, n = p.shards || 0, a = p.aim, x1 = p.x, y1 = p.y, len = 240 + n * 20;
@@ -2007,7 +2015,7 @@ Object.assign(HEROES, {
     ],
     attack(p) {
       const S = p.stats, n = S.silverBlades ? 5 : 3, sp = S.silverBlades ? 0.12 : 0.14;
-      for (let i = 0; i < n; i++) G.pProj({ x: p.x, y: p.y - 18, ang: p.aim + (i - (n - 1) / 2) * sp, speed: 1000, dmg: 8 * (S.silverBlades ? 0.65 : 1), slot: 'attack', r: 7, pierce: S.silverBlades ? 1 : 0, life: G.timeStopT > 0 ? 1.4 : 0.55, kind: 'knife', color: '#dfe8f0', kb: 40 });
+      for (let i = 0; i < n; i++) G.pProj({ x: p.x, y: p.y - 18, ang: p.aim + (i - (n - 1) / 2) * sp, speed: 1000, dmg: 10 * (S.silverBlades ? 0.65 : 1), slot: 'attack', r: 7, pierce: S.silverBlades ? 1 : 0, life: G.timeStopT > 0 ? 1.4 : 0.55, kind: 'knife', color: '#dfe8f0', kb: 40 });
       SFX.play('arrow', 0.4);
       return 0.24 / S.atkSpeed;
     },
@@ -2034,15 +2042,15 @@ Object.assign(HEROES, {
     desc: 'Born with zero spirit. No shard would take him, no god would see him. So he trained his body until it did not need them.',
     pal: { hair: '#141418', hair2: '#08080a', skin: '#e6c4a8', outfit: '#1a1a20', outfit2: '#2a2a30', eye: '#3a8a5a', accent: '#c8c8c8', scarf: '#2a2a30' },
     hair: 'short', acc: null, base: { maxHp: 115, speed: 345 },
-    specialName: 'Ambush', specialCd: 3.4, ultName: 'Weapon Swap', ultJp: '武器交換', ultSub: 'no Ultimate — Q swaps weapons',
-    controls: 'VERY CLOSE RANGE. No Ultimate: Q swaps weapons. SPEAR: fast thrusts that pierce shields and armor. STAFF: wide 3-hit spins with huge knockback. CHAIN: long lashes that yank foes in · RMB vanish behind the nearest foe and strike a guaranteed crit',
+    specialName: 'Ambush · Dash Lunge · Grab Throw', specialCd: 3.4, ultName: 'Weapon Swap', ultJp: '武器交換', ultSub: 'no Ultimate — Q swaps weapons',
+    controls: 'VERY CLOSE RANGE. No Ultimate: Q swaps weapons. SPEAR: fast thrusts that pierce shields and armor. STAFF: wide 3-hit spins with huge knockback. CHAIN: long lashes that yank foes in · RMB changes with your weapon. SPEAR Ambush: vanish behind the nearest foe for a guaranteed crit. STAFF Dash Lunge: charge into the first foe in your path. CHAIN Grab Throw: throw a close foe into a wall or another foe',
     statMods(s) { s.dash += 1; s.dashCd *= 0.8; },
     forms: [
       { name: 'Form of the Shardless', desc: 'Nothing given. Everything taken.', cost: 0, apply() {} },
       { name: 'Form of the Mercenary', desc: '+20% gold, +15% damage against elites and bosses.', cost: 2, apply(s) { s.gold += 0.2; s.bigGame += 0.15; } },
       { name: 'Form of the Pure Body', desc: '+40 Max HP and +10% speed. Ambush cooldown +1.5s.', cost: 3, apply(s) { s.maxHp += 40; s.speed *= 1.1; s.spCdAdd += 1.5; } },
     ],
-    weapons: [{ name: 'Spear', glyph: '槍' }, { name: 'Staff', glyph: '棍' }, { name: 'Chain', glyph: '鎖' }],
+    weapons: [{ name: 'Spear', glyph: '槍', special: 'Ambush' }, { name: 'Staff', glyph: '棍', special: 'Dash Lunge' }, { name: 'Chain', glyph: '鎖', special: 'Grab Throw' }],
     swap(p) { p.weapon = (p.weapon + 1) % 3; p.combo = 0; G.text(p.x, p.y - 70, HEROES.kuroto.weapons[p.weapon].name.toUpperCase(), '#c8c8c8', 16); SFX.play('clang', 0.5); },
     attack(p) {
       const S = p.stats, a = p.aim;
@@ -2067,6 +2075,11 @@ Object.assign(HEROES, {
       return 0.36 / S.atkSpeed;
     },
     special(p) {
+      const H = HEROES.kuroto;
+      return [H.ambush, H.staffLunge, H.grabThrow][p.weapon](p);
+    },
+    // Spear: teleport behind the nearest foe for a guaranteed crit. Doubles down on the spear's 1-on-1 strength.
+    ambush(p) {
       const t = G.nearestEnemy(p.x, p.y, 460);
       if (!t) { G.moveSafe(p, Math.cos(p.aim) * 180, Math.sin(p.aim) * 180); SFX.play('dash'); return; }
       G.ghost(p, p.x, p.y, 0.3);
@@ -2075,6 +2088,52 @@ Object.assign(HEROES, {
       G.damageEnemy(t, 62, { slot: 'special', kb: 200, stun: 0.5, pierceGuard: true });
       G.fxSlash({ x: t.x, y: t.y - 14, r: 60, ang: p.aim, arc: 2, color: '#e8e0ff', dur: 0.2, width: 1.2 });
       SFX.play('heavy'); G.stop(0.08);
+    },
+    // Staff: lunge along your aim into the first foe in the way. Covers the staff's lack of reach and single-target damage.
+    staffLunge(p) {
+      const a = p.aim, reach = 340 * p.stats.spRange, x1 = p.x, y1 = p.y;
+      const x2 = x1 + Math.cos(a) * reach, y2 = y1 + Math.sin(a) * reach;
+      let t = null, best = Infinity;
+      for (const e of G.enemiesInRange(x1, y1, reach)) {
+        const d = Math.hypot(e.x - x1, e.y - y1);
+        if (d < best && segDist(e.x, e.y, x1, y1, x2, y2) < e.r + 46) { best = d; t = e; }
+      }
+      const len = t ? Math.max(0, best - t.r - 30) : reach;
+      G.moveSafe(p, Math.cos(a) * len, Math.sin(a) * len);
+      p.iframes = Math.max(p.iframes, 0.3);
+      G.fxLine(x1, y1, p.x, p.y, '#c8c8c8', 14, 0.25);
+      for (let k = 0; k < 3; k++) G.ghost(p, lerp(x1, p.x, k / 3), lerp(y1, p.y, k / 3), 0.25);
+      SFX.play('dash');
+      if (!t) return;
+      G.damageEnemy(t, 78, { slot: 'special', kb: 420, kbAng: a, stun: 0.5, pierceGuard: true });
+      G.fxSlash({ x: t.x, y: t.y - 14, r: 70, ang: a, arc: 1.6, color: '#c8c8c8', dur: 0.2, width: 1.3 });
+      SFX.play('heavy'); G.stop(0.08); G.shake(6);
+    },
+    // Chain: grab a close foe and throw it along your aim, into a wall or another foe. Clears rushdown off the chain's short-range gap.
+    // Bosses and other immovable foes can't be thrown, so he hits them and vaults off instead.
+    grabThrow(p) {
+      const t = G.nearestEnemy(p.x, p.y, 200);
+      if (!t) {
+        G.fxLine(p.x, p.y - 14, p.x + Math.cos(p.aim) * 200, p.y - 14 + Math.sin(p.aim) * 200, '#8a8a94', 4, 0.2);
+        SFX.play('clang', 0.3);
+        return 1; // a whiff only costs a short cooldown
+      }
+      G.fxLine(p.x, p.y - 14, t.x, t.y - 14, '#8a8a94', 5, 0.2);
+      SFX.play('clang');
+      p.iframes = Math.max(p.iframes, 0.35);
+      if (t.isBoss || t.kbRes >= 1) {
+        G.damageEnemy(t, 55, { slot: 'special', pierceGuard: true });
+        const away = angTo(t, p), x0 = p.x, y0 = p.y;
+        G.moveSafe(p, Math.cos(away) * 240, Math.sin(away) * 240);
+        G.ghost(p, x0, y0, 0.3);
+        G.text(t.x, t.y - 80, 'TOO HEAVY', '#c8c8c8', 13);
+        return;
+      }
+      const a = p.aim;
+      t.x = p.x + Math.cos(a) * (p.r + t.r + 6); t.y = p.y + Math.sin(a) * (p.r + t.r + 6); G.resolve(t);
+      G.damageEnemy(t, 18, { slot: 'special', pierceGuard: true });
+      if (!t.dead) { t.thrown = { a, t: 0.8 }; t.vx = 0; t.vy = 0; }
+      SFX.play('dash');
     },
     ult() {},
     drawWeapon(ctx, p, x, y, a) {
@@ -2200,13 +2259,15 @@ const STORY3 = {
     ['sekka', 'You first.'],
     ['$hero', 'What — who are you?! Where are my friends?!'],
     ['sekka', '...So this is the world on the other side. Smaller than I imagined. And very broken.'],
-    ['kuroto', 'Tch. Another broken-moon dump. You — shard-kid. You the one who killed the thing at the bottom?'],
+    ['kuroto', 'Tch. Broken here too. You — shard-kid. You the one who killed the thing at the bottom?'],
   ],
   newcomersAccuse: [
     ['sekka', 'Sekka Tokimiya. In my world, time stopped the night your moon broke. I am the only one who still moves.'],
-    ['kuroto', 'Kuroto Amagiri. No shard. No blessing. No gods. I hunt what crawls out of holes like that one. And she\'s why it\'s there.'],
+    ['kuroto', 'The only one. Then who\'s been trying to kill you all this time?'],
+    ['sekka', '...You do not count. You have no clock.'],
+    ['kuroto', 'Kuroto Amagiri. No shard. No blessing. No gods. Same world as her. Everyone I know is standing where they stopped, and she\'s why.'],
     ['sekka', 'Your friends were pulled through. They are not dead — I can hear their clocks ticking on the other side. I am the only one who can.'],
-    ['sekka', 'And he crossed two worlds to kill me. Ask him. Then ask who finds your friends after he succeeds.'],
+    ['sekka', 'And he followed me through that rift to kill me. Ask him. Then ask who finds your friends after he succeeds.'],
     ['kuroto', 'Ask HER what stopped her world. Watch how fast she changes the subject.'],
     ['kuroto', 'So pick, shard-kid. Speed of time — or speed of fists. Whoever you don\'t pick, we go through together.'],
   ],
@@ -2238,7 +2299,7 @@ Object.assign(BOSS_TALK, {
 Object.assign(TALKS, {
   sekka: [{ id: 'sk1', cond: s => s.flags.newcomer === 'sekka', lines: [['sekka', 'Time moves strangely here. Everything is so... loud. So many ticking clocks.'], ['sekka', 'Stop time when the bullets are thickest. Throw everything. Then let it all fall at once. That is the trick.']] }],
   sekka_idle: [[['sekka', 'The rift\'s clock is irregular. Like a heartbeat with a fever.']], [['sekka', 'Your fox friend\'s clock is still ticking. Faintly. I promise.']]],
-  kuroto: [{ id: 'ku1', cond: s => s.flags.newcomer === 'kuroto', lines: [['kuroto', 'Spear for things with armor. Staff for crowds. Chain for runners. Swap on the fly.'], ['kuroto', 'No gauge, no magic. Just don\'t get hit, and hit harder.']] }],
+  kuroto: [{ id: 'ku1', cond: s => s.flags.newcomer === 'kuroto', lines: [['kuroto', 'Spear for things with armor. Staff for crowds. Chain for runners. Swap on the fly.'], ['kuroto', 'Each one does something different when you commit. Spear gets behind them. Staff closes the gap. Chain throws them into something hard.'], ['kuroto', 'No gauge, no magic. Just don\'t get hit, and hit harder.']] }],
   kuroto_idle: [[['kuroto', 'The rift growls at night. Something big on the other side.']], [['kuroto', 'Gods, shards, moons. All crutches. ...Your forms aren\'t bad though.']]],
 });
 LORE.push(
