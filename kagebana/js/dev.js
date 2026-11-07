@@ -70,6 +70,24 @@ const DEV = {
     G.run.bossFor = G.acts().map(() => id);
     G.enterRoom({ type: 'boss', boss: id });
   },
+  /* Every hero and Form, fragment, seal, boss win, Codex entry and lantern, plus lots of shards and keys.
+     Story flags are left alone, so Arc II scenes still play (use the Scene buttons for those). */
+  unlockAll() {
+    const S = SAVE.data;
+    for (const id of HERO_ORDER) { const h = S.heroes[id]; h.unlocked = true; h.forms = HEROES[id].forms.map((_, i) => i); }
+    S.fragments = FRAGMENTS.map(f => f.id);
+    S.seals = SEALS.map(s => s.id);
+    for (const id of Object.keys(BOSSES)) { S.bossKills[id] = Math.max(1, S.bossKills[id] || 0); S.bossMeets[id] = Math.max(1, S.bossMeets[id] || 0); S.seen[id] = true; }
+    for (const id of Object.keys(ENEMIES)) S.seen[id] = true;
+    for (const r of RELICS) S.relicsSeen[r.id] = true;
+    for (const k of Object.keys(KAMI)) S.kamiSeen[k] = true;
+    for (const m of MIRROR) S.mirror[m.id] = m.max;
+    S.shards = Math.max(S.shards, 99999); S.keys = Math.max(S.keys, 999);
+    S.clears = Math.max(S.clears, 1);
+    S.talked.pt_assist = true;
+    SAVE.save();
+    if (G.scene === 'hub') G.toHub();
+  },
   hero(id) { const S = SAVE.data; S.heroes[id].unlocked = true; S.hero = id; SAVE.save(); if (G.scene === 'hub') G.toHub(); },
   tick() {
     if (this.god && P) { P.hp = P.stats.maxHp; P.ult = 100; if (G.hubFight) G.hubFight.tag = 100; }
@@ -159,12 +177,14 @@ const DEV = {
       b.onclick = () => { fn(b); b.blur(); }; el.appendChild(b);
     };
     const h = document.createElement('b'); h.textContent = 'KAGEBANA DEV (` hides)'; el.appendChild(h);
+    btn('Unlock everything', b => { this.unlockAll(); b.textContent = 'Unlock everything ✓'; });
     btn('Scene: shrine breaks, rift opens', () => this.scene({ arcEnd: true }));
     btn('Scene: rift entrance + tag team', () => this.scene({ arcEnd: true, cs1: true }));
     btn('Scene: after the rift', () => this.scene({ arcEnd: true, cs1: true, cs2: true, newcomer: 'sekka' }));
     btn('Scene: rift settled', () => this.scene({ arcEnd: true, cs1: true, cs2: true, newcomer: 'sekka', riftAt: -1 }));
     btn('Scene: forge relit', () => this.scene({ arcEnd: true, cs1: true, cs2: true, newcomer: 'sekka', t_open: true, t_arrive: true, t_rescue: true, t_rescueRuns: 0 }));
     btn('Start Tokoyo (first time)', () => { this.scene({ arcEnd: true, cs1: true, cs2: true, newcomer: 'sekka', t_open: true }); G.startRun(3); });
+    sel('Shard Assist partner', Object.keys(HEROES), v => { SAVE.data.talked.pt_assist = true; SAVE.data.heroes[v].unlocked = true; SAVE.data.assist = v; SAVE.save(); if (G.run) G.run.assistCd = 0; });
     btn('Start Campaign I', () => { this.startGame(); G.startRun(0); });
     btn('Start Campaign II', () => { this.startGame(); G.startRun(1); });
     btn('Start Campaign III', () => { this.startGame(); G.startRun(2); });

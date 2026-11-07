@@ -1569,8 +1569,13 @@ const BIOMES2 = [
     pool: { yata: 3, sunpriest: 3, eclsam: 3, corona: 2, wanyudo: 3 }, boss: 'kurohi', tint: 'rgba(255,120,0,0.07)' },
 ];
 const CAMPAIGNS = [
-  { id: 'moon', name: 'Requiem of the Eighth Moon', jp: '八月の鎮魂歌', acts: BIOMES },
-  { id: 'sun', name: 'Requiem of the Black Sun', jp: '黒日の鎮魂歌', acts: BIOMES2, hpMult: 1.25, dmgMult: 1.45, spdMult: 1.1, tempo: 1.15, extraWaves: 1, eliteBonus: 0.15, shardMult: 2 },
+  /* gate/gateJp: the menu title · tag: the label above it · warn: the warning box (optional)
+     bannerTag: before the act's name on its banner · hudTag: before the act in the HUD · win: the results line for a clear */
+  { id: 'moon', name: 'Requiem of the Eighth Moon', jp: '八月の鎮魂歌', acts: BIOMES,
+    gate: 'The Torii of Ascent', gateJp: '昇天の鳥居', tag: 'CAMPAIGN I', go: 'Begin Ascent', bannerTag: '', hudTag: '', win: 'Mugen defeated' },
+  { id: 'sun', name: 'Requiem of the Black Sun', jp: '黒日の鎮魂歌', acts: BIOMES2, hpMult: 1.25, dmgMult: 1.45, spdMult: 1.1, tempo: 1.15, extraWaves: 1, eliteBonus: 0.15, shardMult: 2,
+    gate: 'The Black Torii of Yomi', gateJp: '黄泉の鳥居', tag: 'CAMPAIGN II', cls: 'c2', go: 'Begin Ascent', bannerTag: 'CAMPAIGN II · ', hudTag: 'II · ', win: 'The Black Sun is broken',
+    warn: '⚠ Foes have +25% HP, +45% damage and act faster. Extra waves, more elites, and every area has a hazard. Spirit Shards ×2, bosses drop 2 Moon Keys.' },
 ];
 const SEALS = [
   { id: 'jorogumo', name: 'Seal of Silk', hint: 'Defeat Jorōgumo, Silk Empress of Yomi.' },
@@ -2198,7 +2203,9 @@ BOSSES.omaga = { id: 'omaga', name: 'Ōmagatsuhi', title: 'The Great Calamity', 
 
 const HEAVEN = { id: 'heaven', name: 'Celestial Pantheon', jp: '神々の殿', act: 'Wrath of the Gods', floor: '#1a1610', floor2: '#221c12', line: '#4a3a1a', wall: '#06050a', accent: '#ffcf40', amb: 'petal', music: 'heaven', prop: 'none', boss: null, tint: 'rgba(255,200,100,0.04)', pool: {} };
 const CALAMITY = { id: 'calamity', name: 'Bottom of the World', jp: '禍の底', act: 'Wrath of the Gods', floor: '#0a0610', floor2: '#100a18', line: '#2a1040', wall: '#000000', accent: '#ff2e63', amb: 'void', music: 'calamity', prop: 'none', boss: null, tint: 'rgba(120,0,60,0.1)', pool: {} };
-CAMPAIGNS.push({ id: 'gods', name: 'Wrath of the Gods', jp: '神々の怒り', acts: [HEAVEN, HEAVEN, HEAVEN, HEAVEN], hpMult: 1, dmgMult: 1.15, spdMult: 1.1, tempo: 1.2, shardMult: 3 });
+CAMPAIGNS.push({ id: 'gods', name: 'Wrath of the Gods', jp: '神々の怒り', acts: [HEAVEN, HEAVEN, HEAVEN, HEAVEN], hpMult: 1, dmgMult: 1.15, spdMult: 1.1, tempo: 1.2, shardMult: 3,
+  gate: 'The Stair of Heaven', gateJp: '天の階', tag: 'FINAL CAMPAIGN', cls: 'c2 c3', warnCls: 'c3', go: 'Begin Ascent', bannerTag: 'WRATH OF THE GODS · ', hudTag: '', win: 'The Calamity is sealed — for now',
+  warn: '⚠ A gauntlet of seven corrupted gods, then the Calamity. You begin holding EVERY Kami blessing — each god you free takes its blessings back, so choose your order. Every god is a bullet-hell fight; the Calamity is far worse. Freed gods leave a Godspark and become playable.' });
 
 /* ---------------- story ---------------- */
 const STORY3 = {

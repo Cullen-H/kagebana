@@ -325,6 +325,7 @@ const G = {
     if (s.jackpot && !dot && Math.random() < s.jackpot) { dmg *= 5; this.text(e.x, e.y - e.r * 3.2, 'JACKPOT!', '#ffcf40', 18); SFX.play('coin'); }
     if (crit) dmg *= 1 + s.critDmg;
     if (e.st.curse > 0) dmg *= 1.3 + s.curseMult;
+    if (e.st.sake > 0) dmg *= 1.2; // Shuten's assist
     if (e.st.freeze > 0) dmg *= 1 + s.frozenMult;
     if (pwIce && e.st.chill > 0) dmg *= 1 + 0.03 * pwIce * e.st.chill;
     if (pwWind) dmg *= 1 + 0.15 * pwWind;
@@ -472,6 +473,7 @@ const G = {
       const gold = Math.round((e.def.gold || 1) * 0.5 * (e.elite ? 3 : 1) * (s ? s.gold : 1) * (1 + 0.1 * this.run.act));
       const coins = Math.max(1, Math.min(6, Math.ceil(gold / 3)));
       for (let i = 0; i < coins; i++) this.pickups.push({ kind: 'coin', x: e.x + rand(-10, 10), y: e.y + rand(-10, 10), vx: rand(-150, 150), vy: rand(-150, 150), v: gold / coins, t: 0 });
+      if (this.run.luckyT > 0) for (let i = 0; i < 3; i++) this.pickups.push({ kind: 'coin', x: e.x, y: e.y, vx: rand(-200, 200), vy: rand(-200, 200), v: Math.max(2, gold / 2), t: 0 }); // Kogane's assist
       if (e.elite) for (let i = 0; i < 3; i++) this.pickups.push({ kind: 'shard', x: e.x, y: e.y, vx: rand(-120, 120), vy: rand(-120, 120), v: 2, t: 0 });
       if (Math.random() < 0.035) this.pickups.push({ kind: 'heal', x: e.x, y: e.y, vx: 0, vy: 0, v: 10, t: 0 });
     }
@@ -739,6 +741,7 @@ const G = {
       cleared: 0, lastShop: -9, trueFinal: S.fragments.length >= 8, dmgDealt: 0, damageTaken: 0, history: [],
       camp, feastHp: 0, disc: {}, bonusDmg: 0, patrons: [S.patron || 'fire'], bossFor: [], duelOffered: {}, duelDone: {},
     };
+    this.run.before = UI.progressSnap(S); // the results screen lists what changed since now
     if (camp && !S.flags.c2intro) S.flags.c2intro = true;
     if (S.hero === 'sayo' && S.heroes.sayo.form === 1) this.run.patrons = [S.patron || 'fire', S.patron2 && S.patron2 !== S.patron ? S.patron2 : (S.patron === 'ice' ? 'fire' : 'ice')];
     for (let a = 0; a < this.acts().length; a++) {
@@ -809,7 +812,7 @@ const G = {
     R.hazardT = 3;
     if (spec.type === 'shop' && P.stats.shopHeal) this.after(0.5, () => P.heal(P.stats.maxHp * 0.25));
     if (run.camp === 2 && spec.actStart) UI.banner('Wrath of the Gods', '神々の怒り — choose which god to free first', 'act');
-    else if (spec.actStart || spec.nextAct) UI.banner(B.act + ' — ' + B.name, (run.camp === 3 ? 'TOKOYO · ' : c2 ? 'CAMPAIGN II · ' : '') + B.jp, 'act');
+    else if (spec.actStart || spec.nextAct) UI.banner(B.act + ' — ' + B.name, this.camp().bannerTag + B.jp, 'act');
     if (spec.type === 'combat' || spec.type === 'elite') {
       R.waves = this.genWaves(spec); R.wave = -1; R.waveDelay = 1.0;
     } else if (spec.type === 'boss' || spec.type === 'duel' || spec.type === 'god' || spec.type === 'final') {
@@ -827,7 +830,7 @@ const G = {
     SAVE.save();
   },
   clearWorld() {
-    this.hubFight = null;
+    this.hubFight = null; this.assistActor = null;
     this.enemies = []; this.projs = []; this.zones = []; this.pickups = []; this.obstacles = []; this.doors = []; this.npcs = [];
     this.ghosts = []; this.slashes = []; this.rings = []; this.lines = []; this.bolts = []; this.texts = []; this.timers = []; this.says = [];
     this.parts.clear(); this.boss = null; UI.bossBar(null);
@@ -967,6 +970,7 @@ const G = {
   updateRoom(dt) {
     const R = this.room;
     if (this.run && this.run.camp === 3) this.tokoyoTick(dt);
+    this.updateAssist(dt);
     if (R && (R.type === 'combat' || R.type === 'elite' || R.type === 'boss') && !R.cleared) this.updateHazard(dt);
     if (!R || R.cleared || !(R.type === 'combat' || R.type === 'elite')) return;
     const alive = this.enemies.filter(e => !e.dead).length;
@@ -1331,6 +1335,7 @@ const G = {
     const summary = {
       victory, trueEnd, camp: run.camp || 0, hero: run.hero, act: run.act, room: run.roomNum, kills: run.kills, time: run.time, shards: run.shards, keys: run.keys,
       boons: run.boons.slice(), relics: run.relics.slice(), disc: Object.assign({}, run.disc), heat: run.heatTotal, dmg: Math.round(run.dmgDealt), gold: run.gold,
+      before: run.before,
     };
     Music.stop();
     this.after(victory ? 0.1 : 0.9, () => {
@@ -1362,7 +1367,7 @@ const G = {
     if (S.flags.arcEnd && !S.flags.cs1) { this.after(0.8, () => this.cutsceneBreak()); return; }
     if (S.flags.cs1 && !S.flags.cs2) { this.after(0.8, () => this.cutsceneNewcomers()); return; }
     if (this.tokoyoHubScene()) return;
-    if (!S.flags.prologue) { S.flags.prologue = true; SAVE.save(); this.after(0.5, () => UI.dialogue(STORY.prologue, () => UI.toast('WASD move · Mouse aim · LMB attack · RMB special · Space dash · Q ultimate · F interact', '#fff', 8))); }
+    if (!S.flags.prologue) { S.flags.prologue = true; SAVE.save(); this.after(0.5, () => UI.dialogue(STORY.prologue, () => UI.toast(UI.controlsLine(), '#fff', 8))); }
     else if (reason === 'death' && !S.flags.firstDeath) { S.flags.firstDeath = true; SAVE.save(); this.after(0.5, () => UI.dialogue(STORY.firstDeath)); }
   },
   heavenGateNpc() {

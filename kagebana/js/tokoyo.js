@@ -24,7 +24,9 @@ Object.assign(THEMES, {
 /* ---------------- the world ---------------- */
 const TOKOYO_TOWN = { id: 'tokoyo', name: 'Town of Hanging Snow', jp: '懸雪の町', act: 'Act I', floor: '#1a2230', floor2: '#202a3a', line: '#34435a', wall: '#070a10', accent: '#bcd8f5', amb: 'hang', music: 'tokoyo', bossMusic: 'okina', prop: 'frozen', hazard: 'hangsnow',
   pool: { seep: 3, wvendor: 4, wdancer: 3, wlantern: 3, wfan: 2, wporter: 2 }, boss: 'okina', tint: 'rgba(120,160,220,0.07)' };
-CAMPAIGNS.push({ id: 'tokoyo', name: 'The Stopped Night', jp: '止まった夜', acts: [TOKOYO_TOWN], hpMult: 1.25, dmgMult: 1.4, spdMult: 1.1, tempo: 1.15, extraWaves: 1, eliteBonus: 0.15, shardMult: 2.5 });
+CAMPAIGNS.push({ id: 'tokoyo', name: 'The Stopped Night', jp: '止まった夜', acts: [TOKOYO_TOWN], hpMult: 1.25, dmgMult: 1.4, spdMult: 1.1, tempo: 1.15, extraWaves: 1, eliteBonus: 0.15, shardMult: 2.5,
+  gate: 'The Rift', gateJp: '裂け目', tag: 'ARC II · TOKOYO', cls: 'c2', go: 'Cross Over', bannerTag: 'TOKOYO · ', hudTag: 'Tokoyo · ', win: 'The festival is over, for now',
+  warn: '⚠ Another world. Foes have +25% HP, +40% damage and act faster, with extra waves and more elites. The hanging snow can hurt you. Spirit Shards ×2.5, and your Kami\'s blessings still reach you here through your shard.' });
 
 /* ---------------- the Worn ---------------- */
 Object.assign(ENEMIES, {
@@ -488,7 +490,9 @@ Object.assign(G, {
       this.runScript([
         { cam: [330, 620], fn: () => { if (ponta) { ponta.alpha = 0; ponta.appear = true; } SFX.play('clang'); this.parts.burst(380, 640, 18, { type: 'glow', color: '#ffb04d', min: 60, max: 240, size: 3 }); }, pre: 0.8, lines: STORY4.forge },
       ], () => {
-        f.t_forge = true; SAVE.save();
+        f.t_forge = true;
+        if (this.assistHint) { S.talked.pt_assist = true; this.after(4, () => this.assistHint()); }
+        SAVE.save();
         this.controlLocked = false;
         UI.banner('ACT I COMPLETE', 'The road goes on, up toward the Iron Keep. To be continued.', 'act');
         SFX.play('bell');

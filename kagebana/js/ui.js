@@ -59,13 +59,19 @@ const UI = {
     this.setModal(true);
     Music.play('title');
     const has = SAVE.exists() && SAVE.data.runs > 0 || SAVE.data.flags.prologue;
-    const t = this.titleEl;
+    const t = this.titleEl, S = SAVE.data, arc2 = !!(S.flags.cs1 || S.flags.arcEnd);
+    const foot = [`Runs ${S.runs}`, `Clears ${S.clears}`, `Moon Fragments ${S.fragments.length}/8`];
+    if ((S.seals || []).length) foot.push(`Seals ${(S.seals || []).length}/4`);
+    const gods = KAMI_ORDER.filter(k => (S.bossKills['god_' + k] || 0) > 0).length;
+    if (gods) foot.push(`Gods freed ${gods}/${KAMI_ORDER.length}`);
+    if (arc2) foot.push(`Heroes ${HERO_ORDER.filter(id => S.heroes[id].unlocked).length}/${HERO_ORDER.length}`);
+    if (S.clears4) foot.push(`Tokoyo ${S.clears4}`);
     t.className = 'show';
     t.innerHTML = `
       <div class="logo">
         <div class="logo-jp">影花</div>
         <div class="logo-en">KAGEBANA</div>
-        <div class="logo-sub">Requiem of the Eighth Moon</div>
+        <div class="logo-sub">${arc2 && CAMPAIGNS[3] ? `<span class="logo-arc">ARC II</span> ${esc(CAMPAIGNS[3].name)}` : 'Requiem of the Eighth Moon'}</div>
       </div>
       <div class="title-menu">
         <button class="btn big" id="t-start">${has ? 'Continue' : 'Begin'}</button>
@@ -73,7 +79,7 @@ const UI = {
         <button class="btn" id="t-set">Settings</button>
         ${has ? '<button class="btn ghost" id="t-wipe">Erase Save</button>' : ''}
       </div>
-      <div class="title-foot">${has ? `Runs ${SAVE.data.runs} · Clears ${SAVE.data.clears} · Moon Fragments ${SAVE.data.fragments.length}/8` : 'A roguelike of blades, Kami and broken moons'}</div>`;
+      <div class="title-foot">${has ? foot.join(' · ') : 'A roguelike of blades, Kami and broken moons'}</div>`;
     $('#t-start').onclick = () => {
       SFX.unlock(); SFX.play('uiok');
       t.className = '';
@@ -88,20 +94,40 @@ const UI = {
       else { w.dataset.armed = 1; w.textContent = 'Click again to erase everything'; }
     };
   },
+  /* The keys bound to an action right now, e.g. "Q / L". */
+  keys(a) { return ((Input.binds()[a]) || []).filter(Boolean).map(keyName).join(' / ') || 'unbound'; },
+  key1(a) { return keyName(((Input.binds()[a]) || []).find(Boolean)); },
+  assistOn() { return !!(G.assistUnlocked && G.assistUnlocked()); },
+  controlsLine() {
+    const mv = ['up', 'left', 'down', 'right'].map(a => this.key1(a)).join('');
+    const ult = P && P.hero && P.hero.swap ? 'swap weapons' : 'ultimate';
+    return `${mv === 'WASD' ? 'WASD' : mv} move · Mouse aim · ${this.key1('attack')} attack · ${this.key1('special')} special · ${this.key1('dash')} dash · ${this.key1('ult')} ${ult}${this.assistOn() ? ` · ${this.key1('assist')} assist` : ''} · ${this.key1('interact')} interact`;
+  },
+  padLine() { return `Gamepad: left stick move · right stick aim · X attack · Y special · A dash · RB ultimate${this.assistOn() ? ' · LB Shard Assist' : ''} · B interact · Start pause.`; },
   howTo(fromTitle) {
+    const S = SAVE.data, f = S.flags;
+    const camps = [
+      `<b>${CAMPAIGNS[0].name}:</b> four Acts of nine rooms each. Pick a door, clear the room, claim its reward.`,
+      S.fragments.includes('first_clear') ? `<b>${CAMPAIGNS[1].name}:</b> the same climb through Yomi, harder, with a hazard in every area.` : '',
+      f.arcEnd || (S.seals || []).length >= 4 ? `<b>${CAMPAIGNS[2].name}:</b> you start holding every blessing and free the seven gods in the order you choose. Each god you free takes its blessings back.` : '',
+      f.t_open ? `<b>${CAMPAIGNS[3].name}:</b> through the rift to Tokoyo, where one night has been stopped for years.` : '',
+    ].filter(Boolean).map(t => `<li>${t}</li>`).join('');
     this.open(`
       <h2>How to Play <span class="jp">遊び方</span></h2>
       <div class="how">
-        <div><b>WASD</b> move · <b>Mouse</b> aim</div>
-        <div><b>Left click / J</b> attack (hold for combos)</div>
-        <div><b>Right click / K</b> special (cooldown)</div>
-        <div><b>Space / Shift</b> dash — invincible while dashing</div>
-        <div><b>Q / L</b> Ultimate when the gauge is full</div>
-        <div><b>F / E</b> interact · <b>Esc</b> pause</div>
-        <div class="muted">Gamepad: left stick move, right stick aim, X attack, Y special, A dash, RB ultimate, B interact.</div>
+        <div><b>${this.keys('up')}, ${this.keys('left')}, ${this.keys('down')}, ${this.keys('right')}</b> move · <b>Mouse</b> aim</div>
+        <div><b>${this.keys('attack')}</b> attack (hold for combos)</div>
+        <div><b>${this.keys('special')}</b> special (cooldown)</div>
+        <div><b>${this.keys('dash')}</b> dash, invincible while dashing</div>
+        <div><b>${this.keys('ult')}</b> Ultimate when the gauge is full. Kuroto has no Ultimate: the same key swaps his weapon.</div>
+        ${this.assistOn() ? `<div><b>${this.keys('assist')}</b> Shard Assist: your partner from the Altar of Heroes steps in for one move, then recharges</div>` : ''}
+        <div><b>${this.keys('interact')}</b> interact · <b>Esc</b> pause</div>
+        <div class="muted">${this.padLine()}</div>
+        <div class="muted small">Change any of these in Settings → Controls.</div>
       </div>
-      <p>Climb four Acts of nine rooms each. Pick a door, clear the room, claim its reward. Kami boons empower your <b>Attack</b>, <b>Special</b>, <b>Dash</b> and <b>Ultimate</b> with their element, and stack with passives and Duo boons.</p>
-      <p>Red shapes on the ground are enemy attacks about to land — get out, or dash through. Hitting a winding-up foe hard enough interrupts it.</p>
+      <ul class="how-camps">${camps}</ul>
+      <p>Kami boons empower your <b>Attack</b>, <b>Special</b>, <b>Dash</b> and <b>Ultimate</b> with their element, and stack with passives and Duo boons.</p>
+      <p>Red shapes on the ground are enemy attacks about to land: get out, or dash through. Hitting a winding-up foe hard enough interrupts it.</p>
       <p>When you fall, you return to the Shrine of Lanterns. Spirit Shards (魂) buy permanent upgrades; Moon Keys (鍵) unlock heroes and weapon Forms. Gather all eight Moon Fragments to see the true ending.</p>
       <div class="row-end"><button class="btn" data-close>Got it</button></div>`, () => { if (fromTitle) this.title(); });
   },
@@ -109,9 +135,15 @@ const UI = {
   /* ---------------- generic modal ---------------- */
   open(html, onClose, opts = {}) {
     this.setModal(true);
+    // Menus redraw themselves after every click (Pact +/-, Forge, Mirror...). When it's the same
+    // menu being redrawn, keep the scroll position instead of jumping back to the top.
+    const head = h => { const m = /<h2[^>]*>([\s\S]*?)<\/h2>/.exec(h); return m ? m[1] : null; };
+    const same = this.modalEl.classList.contains('show') && head(html) !== null && head(html) === this.openHead && !opts.fresh;
+    const keep = same ? this.panel.scrollTop : 0;
+    this.openHead = head(html);
     this.modalEl.className = 'show' + (opts.wide ? ' wide' : '') + (opts.cls ? ' ' + opts.cls : '');
     this.panel.innerHTML = html;
-    this.panel.scrollTop = 0;
+    this.panel.scrollTop = keep;
     const close = () => { this.close(); if (onClose) onClose(); };
     this.panel.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { SFX.play('ui'); close(); });
     this.keyHandler = (e) => { if (e.code === 'Escape' && !opts.noEsc) { e.preventDefault(); close(); } else if (opts.keys) opts.keys(e); };
@@ -120,7 +152,7 @@ const UI = {
   },
   close() {
     this.modalEl.className = '';
-    this.panel.innerHTML = '';
+    this.panel.innerHTML = ''; this.openHead = null;
     this.keyHandler = null;
     this.setModal(false);
   },
@@ -137,10 +169,9 @@ const UI = {
     const S = SAVE.data, h = HEROES[S.hero], f = h.forms[S.heroes[S.hero].form], heat = SAVE.heat();
     const C = CAMPAIGNS[camp];
     const p = this.open(`
-      <h2>${camp === 3 ? 'The Rift <span class="jp">裂け目</span>' : camp === 2 ? 'The Stair of Heaven <span class="jp">天の階</span>' : camp ? 'The Black Torii of Yomi <span class="jp">黄泉の鳥居</span>' : 'The Torii of Ascent <span class="jp">昇天の鳥居</span>'}</h2>
-      <div class="camp-tag ${camp ? 'c2' : ''} ${camp === 2 ? 'c3' : ''}">${camp === 3 ? 'ARC II · TOKOYO' : camp === 2 ? 'FINAL CAMPAIGN' : camp ? 'CAMPAIGN II' : 'CAMPAIGN I'} · ${C.name} <span class="jp">${C.jp}</span></div>
-      ${camp === 3 ? '<div class="c2-warn">⚠ Another world. Foes have +25% HP, +40% damage and act faster, with extra waves and more elites. The hanging snow can hurt you. Spirit Shards ×2.5, and your Kami\'s blessings still reach you here through your shard.</div>' : ''}
-      ${camp === 2 ? '<div class="c2-warn c3">⚠ A gauntlet of seven corrupted gods, then the Calamity. You begin holding EVERY Kami blessing — each god you free takes its blessings back, so choose your order. Every god is a bullet-hell fight; the Calamity is far worse. Freed gods leave a Godspark and become playable.</div>' : camp === 1 ? '<div class="c2-warn">⚠ Foes have +25% HP, +45% damage and act faster. Extra waves, more elites, and every area has a hazard. Spirit Shards ×2, bosses drop 2 Moon Keys.</div>' : ''}
+      <h2>${C.gate} <span class="jp">${C.gateJp}</span></h2>
+      <div class="camp-tag ${C.cls || ''}">${C.tag} · ${C.name} <span class="jp">${C.jp}</span></div>
+      ${C.warn ? `<div class="c2-warn ${C.warnCls || ''}">${esc(C.warn)}</div>` : ''}
       <div class="confirm">
         <canvas class="pc" width="140" height="140"></canvas>
         <div>
@@ -153,7 +184,7 @@ const UI = {
         </div>
       </div>
       ${h.devotion ? `<div class="patron-pick"><div class="pp-lbl">Patron Kami${S.heroes.sayo.form === 1 ? ' (choose two)' : ''}</div><div class="pp-row">${KAMI_ORDER.map(k => `<button class="pp ${k === S.patron || (S.heroes.sayo.form === 1 && k === S.patron2) ? 'on' : ''}" data-k="${k}" style="--c:${KAMI[k].color}" title="${KAMI[k].name} — ${KAMI[k].title} · ${KAMI[k].el}"><span>${KAMI[k].glyph}</span><i>${KAMI[k].name}</i></button>`).join('')}</div></div>` : ''}
-      <div class="row-end"><button class="btn ghost" data-close>Not yet</button><button class="btn big" id="go">${camp === 3 ? 'Cross Over' : 'Begin Ascent'}</button></div>`);
+      <div class="row-end"><button class="btn ghost" data-close>Not yet</button><button class="btn big" id="go">${C.go}</button></div>`);
     this.portrait($('.pc', p), S.hero);
     p.querySelectorAll('.pp').forEach(b => b.onclick = () => {
       const k = b.dataset.k; SFX.play('ui');
@@ -176,6 +207,12 @@ const UI = {
     this.setH('hp', Math.ceil(P.hp) + '/' + s.maxHp, v => { $('#hp-text').textContent = v; $('#hp-fill').style.width = (hpPct * 100) + '%'; $('#hp-fill').classList.toggle('low', hpPct < 0.3); });
     if (P.hero.swap) this.setH('ult', 'w' + P.weapon, () => { $('#ult').style.setProperty('--p', '100%'); $('#ult').classList.remove('ready'); $('#ult-n').textContent = P.hero.weapons[P.weapon].glyph; $('.ult-lbl').textContent = keyName(Input.binds().ult[0]) + ' SWAP'; });
     else this.setH('ult', Math.floor(P.ult), v => { $('#ult').style.setProperty('--p', v + '%'); $('#ult').classList.toggle('ready', v >= 100); $('#ult-n').textContent = v >= 100 ? keyName(Input.binds().ult[0]) : v; $('.ult-lbl').textContent = 'ULT'; });
+    const asId = run && G.assistId ? G.assistId() : null;
+    this.setH('asid', asId || '', id => {
+      const el = $('#assist'); el.classList.toggle('hidden', !id);
+      if (id) { this.portrait($('canvas', el), id, null, true); $('.as-key', el).textContent = keyName(Input.binds().assist[0]); el.title = `Shard Assist: ${HEROES[id].name}`; }
+    });
+    if (asId) this.setH('ascd', Math.ceil(run.assistCd || 0), v => { const el = $('#assist'); el.style.setProperty('--p', (100 - v / ASSIST_CD * 100) + '%'); el.classList.toggle('ready', v <= 0); });
     this.setH('dash', P.dashes + '/' + s.dash, () => {
       $('#dashpips').innerHTML = Array.from({ length: s.dash }, (_, i) => `<span class="${i < P.dashes ? 'on' : ''}"></span>`).join('');
     });
@@ -186,7 +223,7 @@ const UI = {
     this.setH('shards', S.shards, v => $('#r-shards').textContent = v);
     this.setH('keys', S.keys, v => $('#r-keys').textContent = v);
     this.setH('frag', S.fragments.length, v => $('#r-frag').textContent = v + '/8');
-    const loc = run && run.camp === 2 ? `Wrath of the Gods · ${run.godsDone.length}/7 gods freed${run.heatTotal ? ' · Phase ' + run.heatTotal : ''}` : run ? `${run.camp === 3 ? 'Tokoyo · ' : run.camp ? 'II · ' : ''}${G.acts()[run.act].act} · Room ${run.roomNum}/${ROOMS_PER_ACT}${run.heatTotal ? ' · Phase ' + run.heatTotal : ''}` : 'Shrine of Lanterns';
+    const loc = run && run.camp === 2 ? `Wrath of the Gods · ${run.godsDone.length}/7 gods freed${run.heatTotal ? ' · Phase ' + run.heatTotal : ''}` : run ? `${G.camp().hudTag}${G.acts()[run.act].act} · Room ${run.roomNum}/${ROOMS_PER_ACT}${run.heatTotal ? ' · Phase ' + run.heatTotal : ''}` : 'Shrine of Lanterns';
     this.setH('loc', loc, v => $('#r-loc').textContent = v);
     const bkey = run ? run.boons.map(b => b.id + b.lv + b.r).join() + '|' + run.relics.join() + '|' + JSON.stringify(run.disc) : '';
     const st = [];
@@ -243,7 +280,7 @@ const UI = {
     const hint = $('#hint');
     if (this.modal) hint.textContent = '';
     else if (G.hubFight) hint.textContent = G.hubFight.tag >= 100 ? `TAG READY — press ${keyName(Input.binds().interact[0])} to call ${HEROES[G.hubFight.allyId].name.split(' ')[0]}'s attack` : `Tag attack ${Math.floor(G.hubFight.tag)}%`;
-    else if (G.scene === 'hub') hint.textContent = G.nearNpc ? '' : 'WASD move · Mouse aim · LMB attack · RMB special · Space dash · Q ultimate · F interact · Esc menu';
+    else if (G.scene === 'hub') this.setH('hint', G.nearNpc ? '' : this.controlsLine() + ' · Esc menu', v => { hint.textContent = v; });
     else if (run && G.doors.length && !G.room.rewardTaken && G.pickups.some(p => p.kind === 'reward')) hint.textContent = 'Claim the reward';
     else if (run && G.doors.length) hint.textContent = 'Choose a door';
     else hint.textContent = '';
@@ -479,30 +516,57 @@ const UI = {
   },
 
   /* ---------------- Forge (unlock heroes & forms) ---------------- */
-  forge() {
+  /* A grid of every hero; click one to see their Forms on the right. A gold dot marks a
+     hero you can do something for right now, and the counts say how far each one is. */
+  forge(sel) {
     const S = SAVE.data;
+    const known = id => S.heroes[id].unlocked || !HERO_UNLOCK[id].req || HERO_UNLOCK[id].req(S);
+    const canBuy = id => {
+      const hs = S.heroes[id], U = HERO_UNLOCK[id];
+      if (!hs.unlocked) return known(id) && S.keys >= U.keys;
+      return HEROES[id].forms.some((f, i) => !hs.forms.includes(i) && S.keys >= f.cost);
+    };
+    if (sel && HEROES[sel]) this.forgeSel = sel;
+    if (!this.forgeSel || !HEROES[this.forgeSel]) this.forgeSel = HERO_ORDER.find(canBuy) || S.hero;
+    const id = this.forgeSel, h = HEROES[id], hs = S.heroes[id], U = HERO_UNLOCK[id], seen = known(id);
+    const owned = HERO_ORDER.filter(i => S.heroes[i].unlocked).length;
+    const cell = i => {
+      const s = S.heroes[i], k = known(i), n = s.unlocked ? `${s.forms.length}/${HEROES[i].forms.length}` : (k && HERO_UNLOCK[i].keys ? '🗝 ' + HERO_UNLOCK[i].keys : k ? 'free' : 'locked');
+      return `<button class="fg-cell ${i === id ? 'sel' : ''} ${s.unlocked ? '' : 'locked'} ${k ? '' : 'unknown'}" data-pick="${i}" style="--c:${HEROES[i].pal.scarf}" title="${k ? esc(HEROES[i].name) : '???'}">
+        <canvas width="90" height="90" data-h="${i}"></canvas>${canBuy(i) ? '<span class="fg-dot"></span>' : ''}
+        <span class="fg-name">${k ? esc(HEROES[i].name) : '???'}</span><span class="fg-n">${n}</span></button>`;
+    };
+    let detail;
+    if (!hs.unlocked) {
+      detail = `<div class="fg-head"><canvas width="120" height="120" data-h="${id}" class="fg-big"></canvas><div><div class="fh-name">${seen ? h.name : '???'} <span class="jp">${seen ? h.jp : ''}</span></div>
+          ${seen ? `<div class="muted small">${esc(h.title)}</div>` : ''}</div></div>
+        <p class="muted">${seen ? esc(h.desc) : 'Requirement: ' + esc(U.hint)}</p>
+        <button class="btn" data-unlock="${id}" ${seen && S.keys >= U.keys ? '' : 'disabled'}>${seen ? 'Unlock' : 'Locked'}${U.keys ? ' · 🗝 ' + U.keys : ''}</button>`;
+    } else {
+      const mv = typeof assistMove === 'function' ? assistMove(id) : null;
+      detail = `<div class="fg-head"><canvas width="120" height="120" data-h="${id}" class="fg-big"></canvas><div><div class="fh-name">${h.name} <span class="jp">${h.jp}</span></div>
+          <div class="muted small">${esc(h.title)}</div><div class="small fg-kit">${esc(h.weapon)} · HP ${h.base.maxHp} · ${esc(h.specialName)}${mv && G.assistUnlocked && G.assistUnlocked() ? ` · Assist: ${esc(mv.name)}` : ''}</div></div></div>
+        <div class="forms">${h.forms.map((f, i) => {
+          const own = hs.forms.includes(i);
+          return `<div class="form ${own ? 'own' : ''}"><div class="f-name">${esc(f.name)}</div><div class="f-desc">${esc(f.desc)}</div>${own ? '<div class="f-own">Awakened</div>' : `<button class="btn small" data-form="${id}:${i}" ${S.keys >= f.cost ? '' : 'disabled'}>Awaken · 🗝 ${f.cost}</button>`}</div>`;
+        }).join('')}</div>`;
+    }
     const p = this.open(`
       <h2>Ponta's Forge <span class="jp">狸の鍛冶場</span></h2>
-      <p class="muted">Moon Keys awaken heroes and new Forms of their weapons.</p>
-      <div class="cur">🗝 <b>${S.keys}</b> Moon Keys</div>
-      <div class="forge-list">${HERO_ORDER.map(id => {
-        const h = HEROES[id], hs = S.heroes[id], U = HERO_UNLOCK[id];
-        if (!hs.unlocked) {
-          const ok = !U.req || U.req(S);
-          return `<div class="forge-hero locked"><canvas class="fp" width="90" height="90" data-h="${id}"></canvas><div class="fh-body"><div class="fh-name">${ok ? h.name : '???'} <span class="jp">${ok ? h.jp : ''}</span></div><div class="muted">${ok ? h.desc : 'Requirement: ' + esc(U.hint)}</div></div>
-            <button class="btn" data-unlock="${id}" ${ok && S.keys >= U.keys ? '' : 'disabled'}>Unlock · 🗝 ${U.keys}</button></div>`;
-        }
-        return `<div class="forge-hero"><canvas class="fp" width="90" height="90" data-h="${id}"></canvas><div class="fh-body"><div class="fh-name">${h.name} <span class="jp">${h.jp}</span></div><div class="muted small">${h.weapon}</div>
-          <div class="forms">${h.forms.map((f, i) => {
-            const own = hs.forms.includes(i);
-            return `<div class="form ${own ? 'own' : ''}"><div class="f-name">${esc(f.name)}</div><div class="f-desc">${esc(f.desc)}</div>${own ? '<div class="f-own">Awakened</div>' : `<button class="btn small" data-form="${id}:${i}" ${S.keys >= f.cost ? '' : 'disabled'}>Awaken · 🗝 ${f.cost}</button>`}</div>`;
-          }).join('')}</div></div></div>`;
-      }).join('')}</div>
+      <p class="muted">Moon Keys awaken heroes and new Forms of their weapons. A gold dot means you can afford something for that hero.</p>
+      <div class="cur">🗝 <b>${S.keys}</b> Moon Keys · ${owned}/${HERO_ORDER.length} heroes</div>
+      <div class="forge-wrap"><div class="fg-grid">${HERO_ORDER.map(cell).join('')}</div><div class="fg-detail" style="--c:${seen ? h.pal.scarf : '#555'}">${detail}</div></div>
       <div class="row-end"><button class="btn" data-close>Done</button></div>`, null, { wide: true });
     p.querySelectorAll('canvas[data-h]').forEach(c => {
-      const id = c.dataset.h;
-      if (S.heroes[id].unlocked || !HERO_UNLOCK[id].req || HERO_UNLOCK[id].req(S)) this.portrait(c, id);
-      else { const x = c.getContext('2d'); x.fillStyle = '#222'; x.font = '900 50px serif'; x.textAlign = 'center'; x.fillStyle = '#555'; x.fillText('?', 45, 62); }
+      const i = c.dataset.h;
+      if (known(i)) this.portrait(c, i);
+      else { const x = c.getContext('2d'), w = c.width; x.font = `900 ${w * 0.55}px serif`; x.textAlign = 'center'; x.fillStyle = '#555'; x.fillText('?', w / 2, w * 0.7); }
+    });
+    p.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
+      if (b.dataset.pick === this.forgeSel) return;
+      SFX.play('ui'); const q = this.forge(b.dataset.pick);
+      // on a phone the details sit above the grid, so bring them into view
+      if (window.innerWidth <= 720 && q) { const d = q.querySelector('.fg-detail'); if (d) q.scrollTop = Math.max(0, d.offsetTop - 12); }
     });
     p.querySelectorAll('[data-unlock]').forEach(b => b.onclick = () => {
       const id = b.dataset.unlock, U = HERO_UNLOCK[id];
@@ -520,25 +584,37 @@ const UI = {
       this.toast(`${f.name} awakened!`, '#ffd56b');
       this.forge();
     });
+    return p;
   },
 
   /* ---------------- Altar (choose hero / form) ---------------- */
   altar() {
-    const S = SAVE.data;
+    const S = SAVE.data, assistOn = this.assistOn();
     const p = this.open(`
       <h2>Altar of Heroes <span class="jp">英雄の祭壇</span></h2>
       <p class="muted">Choose who climbs next, and which Form their weapon takes.</p>
+      ${assistOn ? `<div class="assist-pick"><b style="color:#c8a8ff">Shard Assist</b> <span>${S.assist && S.assist !== S.hero && HEROES[S.assist] ? `${esc(HEROES[S.assist].name)} · ${esc(assistMove(S.assist).name)} <button class="btn small ghost" id="assist-clear">Clear</button>` : '<span class="muted">Nobody yet. Pick a partner below.</span>'}</span>
+        <span class="muted small">Press ${keyName(Input.binds().assist[0])} in a fight to call them in. ${ASSIST_CD}s to recharge.</span></div>` : ''}
       <div class="altar-list">${HERO_ORDER.filter(id => S.heroes[id].unlocked).map(id => {
-        const h = HEROES[id], hs = S.heroes[id];
-        return `<div class="altar-hero ${S.hero === id ? 'sel' : ''}" data-h="${id}" style="--c:${h.pal.scarf}"><canvas width="120" height="120" data-p="${id}"></canvas>
+        const h = HEROES[id], hs = S.heroes[id], mv = assistOn ? assistMove(id) : null, job = mv && ASSIST_JOB[mv.job || 'damage'];
+        const isAs = assistOn && S.assist === id && S.hero !== id;
+        return `<div class="altar-hero ${S.hero === id ? 'sel' : ''} ${isAs ? 'as' : ''}" data-h="${id}" style="--c:${h.pal.scarf}">${isAs ? '<span class="ah-badge">ASSIST</span>' : ''}<canvas width="120" height="120" data-p="${id}"></canvas>
           <div class="ah-name">${h.name}</div><div class="muted small">${h.title}</div>
           <select data-sel="${id}">${hs.forms.map(i => `<option value="${i}" ${hs.form === i ? 'selected' : ''}>${esc(h.forms[i].name)}</option>`).join('')}</select>
-          <div class="small ah-stats">HP ${h.base.maxHp} · ${esc(h.specialName)}</div></div>`;
+          <div class="small ah-stats">HP ${h.base.maxHp} · ${esc(h.specialName)}</div>
+          ${mv ? `<button class="ah-assist ${isAs ? 'on' : ''}" data-as="${id}" ${S.hero === id ? 'disabled title="This is who you are playing"' : ''}><span class="ah-job" style="color:${job[1]}">${job[0]}</span> ${esc(mv.name)}<span class="ah-set">${S.hero === id ? 'playing' : isAs ? 'partner ✓' : 'set as assist'}</span></button>` : ''}</div>`;
       }).join('')}</div>
       <div class="row-end"><button class="btn" data-close>Done</button></div>`, null, { wide: true });
     p.querySelectorAll('canvas[data-p]').forEach(c => this.portrait(c, c.dataset.p));
+    const asClr = $('#assist-clear', p);
+    if (asClr) asClr.onclick = () => { S.assist = null; SAVE.save(); SFX.play('ui'); this.altar(); };
+    p.querySelectorAll('[data-as]').forEach(b => b.onclick = (e) => {
+      e.stopPropagation();
+      const id = b.dataset.as; if (id === S.hero) return;
+      S.assist = S.assist === id ? null : id; SAVE.save(); SFX.play('uiok'); this.altar();
+    });
     p.querySelectorAll('.altar-hero').forEach(d => d.onclick = (e) => {
-      if (e.target.tagName === 'SELECT' || e.target.tagName === 'OPTION') return;
+      if (e.target.tagName === 'SELECT' || e.target.tagName === 'OPTION' || e.target.closest('[data-as]')) return;
       const id = d.dataset.h;
       if (S.hero === id) return;
       S.hero = id; SAVE.save(); SFX.play('uiok');
@@ -574,24 +650,17 @@ const UI = {
   /* ---------------- Codex ---------------- */
   codex(tab = 'frag') {
     const S = SAVE.data;
-    const tabs = { frag: 'Moon Fragments', seals: 'Black Sun Seals', bestiary: 'Bestiary', kami: 'Kami & Boons', relics: 'Relics', lore: 'Lore', stats: 'Records' };
+    const tabs = { frag: 'Moon Fragments', camps: 'Campaigns', bestiary: 'Bestiary', kami: 'Kami & Boons', relics: 'Relics', lore: 'Lore', stats: 'Records' };
+    if (tab === 'seals') tab = 'camps';
     let body = '';
     if (tab === 'frag') {
       body = `<div class="frag-moon">${FRAGMENTS.map((f, i) => `<span class="fm ${S.fragments.includes(f.id) ? 'on' : ''}" style="transform:rotate(${i * 45}deg) translateY(-70px)"></span>`).join('')}<div class="fm-n">${S.fragments.length}/8</div></div>
         <div class="list">${FRAGMENTS.map(f => { const on = S.fragments.includes(f.id); return `<div class="li ${on ? 'on' : ''}"><b>${on ? '🌕' : '🌑'} ${esc(f.name)}</b><div class="muted small">${esc(f.hint)}</div></div>`; }).join('')}</div>
         ${S.fragments.length >= 8 ? `<p class="gold-text">${S.flags.trueEnd ? 'The eighth moon shines. Thank you for playing.' : 'All eight gathered. Face Mugen once more.'}</p>` : ''}`;
-    } else if (tab === 'seals') {
-      const sl = S.seals || [];
-      body = S.fragments.includes('first_clear') ? `<p class="muted">Campaign II — ${CAMPAIGNS[1].name}. Seals are earned by defeating each of its bosses.</p><div class="list">${SEALS.map(x => `<div class="li ${sl.includes(x.id) ? 'on' : ''}"><b>${sl.includes(x.id) ? '☀' : '●'} ${esc(x.name)}</b><div class="muted small">${esc(x.hint)}</div></div>`).join('')}</div>
-        <div class="stats-grid"><div><b>${S.clears2 || 0}</b><span>Campaign II clears</span></div><div><b>${S.clears3 || 0}</b><span>Wrath of the Gods clears</span></div></div>
-        <h3 class="codex-h">Wrath of the Gods</h3><p class="muted small">${S.fragments.length >= 8 && sl.length >= 4 ? 'The Stair of Heaven is open.' : `Requires all 8 Moon Fragments (${S.fragments.length}/8) and all 4 Black Sun Seals (${sl.length}/4).`}</p>
-        <div class="list two">${KAMI_ORDER.map(k => { const on = (S.bossKills['god_' + k] || 0) > 0; return `<div class="li ${on ? 'on' : ''}"><b style="color:${on ? KAMI[k].color : ''}">${KAMI[k].glyph} ${on ? KAMI[k].name + ' — freed' : '???'}</b><div class="muted small">${on ? GODSPARKS[k].name + ': ' + GODSPARKS[k].desc : 'Corrupted.'}</div></div>`; }).join('')}</div>` : '<p class="muted">Sealed. Defeat Mugen once to open the road to Yomi.</p>';
+    } else if (tab === 'camps') {
+      body = this.codexCamps(S);
     } else if (tab === 'bestiary') {
-      const all = [...Object.entries(ENEMIES).filter(([id]) => id !== 'dummy'), ...Object.entries(BOSSES)];
-      body = `<div class="list">${all.map(([id, d]) => {
-        const seen = S.seen[id];
-        return `<div class="li ${seen ? 'on' : ''}"><b>${seen ? esc(d.name) : '???'}</b>${d.title && seen ? ` <span class="muted">— ${esc(d.title)}</span>` : ''} <span class="muted small">${seen ? 'Slain: ' + (S.kills[id] || S.bossKills[id] || 0) : ''}</span><div class="muted small">${seen ? esc(d.desc || d.jp || '') : 'Not yet encountered.'}</div></div>`;
-      }).join('')}</div>`;
+      body = this.codexBestiary(S);
     } else if (tab === 'kami') {
       body = KAMI_ORDER.map(k => {
         const K = KAMI[k], seen = S.kamiSeen[k];
@@ -605,19 +674,90 @@ const UI = {
       body = `<div class="list">${LORE.map(l => { const on = l.cond(S); return `<div class="li ${on ? 'on' : ''}"><b>${on ? esc(l.title) : '???'}</b><div class="small">${on ? esc(l.text) : '<span class="muted">Locked.</span>'}</div></div>`; }).join('')}</div>`;
     } else {
       const hrs = Math.floor(S.playTime / 3600), mins = Math.floor(S.playTime / 60) % 60;
-      body = `<div class="stats-grid">
+      const met = Object.entries(BOSSES).filter(([id]) => S.seen[id] || S.bossKills[id]);
+      const heroes = HERO_ORDER.filter(h => S.heroes[h].unlocked);
+      body = `<h3 class="codex-h">Overall</h3><div class="stats-grid">
         <div><b>${S.runs}</b><span>Runs</span></div><div><b>${S.clears}</b><span>Clears</span></div><div><b>${S.deaths}</b><span>Deaths</span></div>
         <div><b>${S.bestHeat < 0 ? '—' : S.bestHeat}</b><span>Best Phase</span></div><div><b>${Object.values(S.kills).reduce((a, b) => a + b, 0)}</b><span>Foes slain</span></div><div><b>${hrs}h ${mins}m</b><span>Played</span></div>
-        ${Object.entries(BOSSES).map(([id, b]) => `<div><b>${S.bossKills[id] || 0}</b><span>${esc(b.name)} ${id === 'thousandth' ? '(true)' : ''}</span></div>`).join('')}
-        ${HERO_ORDER.map(h => `<div><b>${S.clearsByHero[h] || 0}</b><span>${HEROES[h].name.split(' ')[0]} clears</span></div>`).join('')}
-      </div>`;
+      </div>
+      <h3 class="codex-h">Bosses <span class="muted small">${met.length}/${Object.keys(BOSSES).length} met</span></h3>
+      ${met.length ? `<div class="stats-grid">${met.map(([id, b]) => `<div><b>${S.bossKills[id] || 0}</b><span>${esc(b.name)}${id === 'thousandth' ? ' (true)' : ''}</span></div>`).join('')}</div>` : '<p class="muted small">None yet.</p>'}
+      <h3 class="codex-h">Clears by hero</h3>
+      <div class="stats-grid">${heroes.map(h => `<div><b>${S.clearsByHero[h] || 0}</b><span>${esc(HEROES[h].name.split(' ')[0])}</span></div>`).join('')}</div>`;
     }
     const p = this.open(`
       <h2>Codex <span class="jp">記録</span></h2>
       <div class="tabs">${Object.entries(tabs).map(([k, v]) => `<button class="tab ${k === tab ? 'on' : ''}" data-t="${k}">${v}</button>`).join('')}</div>
       <div class="codex-body">${body}</div>
-      <div class="row-end"><button class="btn" data-close>Close</button></div>`, null, { wide: true });
+      <div class="row-end"><button class="btn" data-close>Close</button></div>`, null, { wide: true, fresh: true });
     p.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { SFX.play('ui'); this.codex(b.dataset.t); });
+    p.querySelectorAll('canvas[data-e]').forEach(c => this.drawFoe(c, c.dataset.e));
+  },
+  /* Whether each campaign's gate is open, and what it takes if not. */
+  campState(i, S) {
+    const fr = S.fragments.length, sl = (S.seals || []).length;
+    if (i === 0) return { open: true };
+    if (i === 1) return { open: S.fragments.includes('first_clear'), hint: 'Defeat Mugen once to open the road to Yomi.' };
+    if (i === 2) return { open: fr >= 8 && sl >= 4, hint: `Needs all 8 Moon Fragments (${fr}/8) and all 4 Black Sun Seals (${sl}/4).` };
+    const open = G.riftSettled ? G.riftSettled() : false;
+    return { open, secret: !S.flags.cs2, hint: S.flags.cs2 ? 'The rift is still settling. Go on another run first.' : 'Something has to break first.' };
+  },
+  codexCamps(S) {
+    const tick = on => on ? '<span class="cc-ok">✓</span>' : '<span class="cc-no">·</span>';
+    const actRows = C => `<div class="cc-acts">${C.acts.filter(B => B.boss).map((B, n) => {
+      const b = BOSSES[B.boss], seen = S.seen[B.boss] || S.bossKills[B.boss];
+      return `<div>${tick(S.bossKills[B.boss] > 0)} <b>Act ${n + 1}</b> ${esc(B.name)} <span class="muted">· ${seen ? esc(b.name) : '???'}${S.bossKills[B.boss] ? ' ×' + S.bossKills[B.boss] : ''}</span></div>`;
+    }).join('')}</div>`;
+    return CAMPAIGNS.map((C, i) => {
+      const st = this.campState(i, S);
+      if (st.secret) return `<div class="cc locked"><div class="cc-head"><span class="cc-tag">???</span><b>???</b></div><p class="muted small">${esc(st.hint)}</p></div>`;
+      let extra = '';
+      if (i === 0) extra = `<div class="cc-line">🌕 Moon Fragments <b>${S.fragments.length}/8</b> · total clears <b>${S.clears}</b></div>`;
+      if (i === 1) { const sl = S.seals || []; extra = `<div class="cc-line">☀ Black Sun Seals <b>${sl.length}/4</b> · clears <b>${S.clears2 || 0}</b></div>
+        <div class="list two">${SEALS.map(x => `<div class="li ${sl.includes(x.id) ? 'on' : ''}"><b>${sl.includes(x.id) ? '☀' : '●'} ${esc(x.name)}</b><div class="muted small">${esc(x.hint)}</div></div>`).join('')}</div>`; }
+      if (i === 2) { const freed = KAMI_ORDER.filter(k => (S.bossKills['god_' + k] || 0) > 0).length; extra = `<div class="cc-line">⛩ Gods freed <b>${freed}/${KAMI_ORDER.length}</b> · clears <b>${S.clears3 || 0}</b></div>
+        <div class="list two">${KAMI_ORDER.map(k => { const on = (S.bossKills['god_' + k] || 0) > 0; return `<div class="li ${on ? 'on' : ''}"><b style="color:${on ? KAMI[k].color : ''}">${KAMI[k].glyph} ${on ? KAMI[k].name + ' · freed' : '???'}</b><div class="muted small">${on ? GODSPARKS[k].name + ': ' + GODSPARKS[k].desc : 'Corrupted.'}</div></div>`; }).join('')}</div>`; }
+      if (i === 3) extra = `<div class="cc-line">🏮 Okina laid to rest <b>${S.clears4 || 0}</b> time${S.clears4 === 1 ? '' : 's'}${S.flags.t_rescue ? ' · Ponta is home' : ''}</div><p class="muted small">The rest of Tokoyo is still frozen.</p>`;
+      return `<div class="cc ${st.open ? '' : 'locked'} ${C.cls || ''}"><div class="cc-head"><span class="cc-tag">${esc(C.tag || 'CAMPAIGN')}</span><b>${esc(C.name)}</b> <span class="jp">${esc(C.jp || '')}</span></div>
+        ${st.open ? '' : `<p class="muted small">🔒 ${esc(st.hint)}</p>`}${i === 2 ? '' : actRows(C)}${extra}</div>`;
+    }).join('');
+  },
+  codexBestiary(S) {
+    const listed = new Set(['dummy']), groups = [];
+    CAMPAIGNS.forEach((C, ci) => C.acts.forEach((B, ai) => {
+      const ids = [...Object.keys(B.pool || {}), B.boss, B.altBoss].filter(id => id && (ENEMIES[id] || BOSSES[id]) && !listed.has(id));
+      if (!ids.length) return;
+      ids.forEach(id => listed.add(id));
+      groups.push({ title: `${C.name} · ${B.name}`, ids });
+    }));
+    const rest = [...Object.keys(ENEMIES), ...Object.keys(BOSSES)].filter(id => !listed.has(id));
+    if (rest.length) groups.push({ title: 'Gods, rivals and others', ids: rest });
+    const seenAll = groups.reduce((a, g) => a + g.ids.filter(id => S.seen[id]).length, 0), total = groups.reduce((a, g) => a + g.ids.length, 0);
+    return `<p class="muted small">${seenAll}/${total} encountered. Hover a picture for its description.</p>` + groups.map(g => {
+      const n = g.ids.filter(id => S.seen[id]).length;
+      return `<h3 class="codex-h">${n ? esc(g.title) : '???'} <span class="muted small">${n}/${g.ids.length}</span></h3><div class="bst-grid">${g.ids.map(id => {
+        const d = ENEMIES[id] || BOSSES[id], seen = S.seen[id], k = S.kills[id] || S.bossKills[id] || 0;
+        return `<div class="bst ${seen ? 'on' : ''} ${BOSSES[id] ? 'boss' : ''}" title="${seen ? esc(d.desc || d.title || '') : 'Not yet encountered.'}">${seen ? `<canvas width="72" height="72" data-e="${id}"></canvas>` : '<div class="bst-q">?</div>'}
+          <b>${seen ? esc(d.name) : '???'}</b>${seen && d.title ? `<span class="muted small">${esc(d.title)}</span>` : ''}<span class="bst-k">${seen ? 'Slain ' + k : ''}</span></div>`;
+      }).join('')}</div>`;
+    }).join('');
+  },
+  /* Draws one enemy or boss standing in a small canvas, using its in-game drawing. */
+  drawFoe(cv, id) {
+    const ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
+    let saved = false;
+    try {
+      const e = new Enemy(id, 0, 0, { noSpawn: true }), fn = EDRAW[e.def.draw] || EDRAW.kappa;
+      e.t = 1.3; e.face = Math.PI / 2; e.aim = Math.PI / 2; e.flash = 0; e.state = 'idle';
+      const s = Math.min(1.4, (W * 0.24) / Math.max(10, e.r));
+      ctx.save(); saved = true; ctx.translate(W / 2, H * 0.9); ctx.scale(s, s);
+      fn(ctx, e, 1.3, false);
+      ctx.restore();
+    } catch (err) {
+      if (saved) ctx.restore();
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H); ctx.globalAlpha = 1;
+      ctx.font = `900 ${W * 0.5}px serif`; ctx.textAlign = 'center'; ctx.fillStyle = '#666'; ctx.fillText('?', W / 2, H * 0.68);
+    }
   },
 
   /* ---------------- settings / pause / results ---------------- */
@@ -644,7 +784,7 @@ const UI = {
       <h2>Controls <span class="jp">操作設定</span></h2>
       <p class="muted">Click a slot, then press any key or mouse button. Esc cancels. Each action has two slots.</p>
       <div class="kb-list">${Object.keys(DEFAULT_BINDS).map(a => `<div class="kb-row"><span>${BIND_LABELS[a]}</span>${[0, 1].map(i => `<button class="kb-slot" data-a="${a}" data-i="${i}">${keyName(B[a][i])}</button>`).join('')}</div>`).join('')}</div>
-      <p class="muted small">Gamepad: left stick move · right stick aim · X attack · Y special · A dash · RB ultimate · B interact · Start pause.</p>
+      <p class="muted small">${this.padLine()}</p>
       <div class="row-end"><button class="btn ghost" id="kb-reset">Reset to defaults</button><button class="btn" data-close>Done</button></div>`, back, { noEsc: false });
     $('#kb-reset', p).onclick = () => { SAVE.data.settings.binds = JSON.parse(JSON.stringify(DEFAULT_BINDS)); SAVE.save(); SFX.play('uiok'); this.hudCache = {}; this.keybinds(back); };
     p.querySelectorAll('.kb-slot').forEach(b => b.onclick = (ev) => {
@@ -706,11 +846,38 @@ const UI = {
       SAVE.save(); this.close(); G.clearWorld(); G.run = null; P = null; G.scene = 'title'; G.makeHubRoom(); this.bossBar(null); this.title();
     };
   },
+  /* What a save has earned so far, so a run's results can say what's new. */
+  progressSnap(S) {
+    return {
+      heroes: HERO_ORDER.filter(id => S.heroes[id].unlocked),
+      forms: Object.fromEntries(HERO_ORDER.map(id => [id, S.heroes[id].forms.slice()])),
+      fragments: S.fragments.slice(), seals: (S.seals || []).slice(),
+      gods: KAMI_ORDER.filter(k => (S.bossKills['god_' + k] || 0) > 0),
+      bosses: Object.keys(BOSSES).filter(id => (S.bossKills[id] || 0) > 0),
+      relics: Object.keys(S.relicsSeen || {}), lore: LORE.filter(l => l.cond(S)).map(l => l.title),
+      assist: !!(S.talked && S.talked.pt_assist), rescue: !!S.flags.t_rescue,
+    };
+  },
+  runGains(b) {
+    if (!b) return [];
+    const S = SAVE.data, now = this.progressSnap(S), out = [], add = (icon, text, col) => out.push({ icon, text, col });
+    const fresh = (a, z) => z.filter(x => !a.includes(x));
+    fresh(b.heroes, now.heroes).forEach(id => add('★', `${HEROES[id].name} joined you`, HEROES[id].pal.scarf));
+    for (const id of HERO_ORDER) fresh(b.forms[id] || [], now.forms[id]).forEach(i => add('⚔', `${HEROES[id].forms[i].name} awakened`, '#ffd56b'));
+    fresh(b.fragments, now.fragments).forEach(id => add('🌕', `Moon Fragment: ${FRAGMENTS.find(f => f.id === id).name}`, '#fff3b0'));
+    fresh(b.seals, now.seals).forEach(id => add('☀', SEALS.find(x => x.id === id).name, '#ffb347'));
+    fresh(b.gods, now.gods).forEach(k => add(KAMI[k].glyph, `${KAMI[k].name} freed`, KAMI[k].color));
+    fresh(b.bosses, now.bosses).filter(id => !id.startsWith('god_')).forEach(id => add('✓', `First win against ${BOSSES[id].name}`, '#7dffb0'));
+    const rl = fresh(b.relics, now.relics).length; if (rl) add('❖', `${rl} new relic${rl > 1 ? 's' : ''} in the Codex`, '#c8a8ff');
+    fresh(b.lore, now.lore).forEach(t => add('📜', `Lore: ${t}`, '#a99fc0'));
+    if (!b.rescue && now.rescue) add('🔨', 'Ponta is home', '#ffb04d');
+    return out;
+  },
   results(sum, done) {
-    const h = HEROES[sum.hero];
+    const h = HEROES[sum.hero], gains = this.runGains(sum.before);
     const mins = Math.floor(sum.time / 60), secs = Math.floor(sum.time % 60);
     const acts = CAMPAIGNS[sum.camp || 0].acts;
-    const where = sum.victory ? (sum.camp === 3 ? 'The festival is over, for now' : sum.camp === 2 ? 'The Calamity is sealed — for now' : sum.camp ? 'The Black Sun is broken' : sum.trueEnd ? 'The Eighth Moon is restored' : 'Mugen defeated') : `Fell in ${acts[sum.act].name}, room ${sum.room}`;
+    const where = sum.victory ? (sum.trueEnd ? 'The Eighth Moon is restored' : CAMPAIGNS[sum.camp || 0].win) : `Fell in ${acts[sum.act].name}, room ${sum.room}`;
     const p = this.open(`
       <div class="res-head ${sum.victory ? 'win' : 'lose'}">${sum.victory ? (sum.trueEnd ? '真 · TRUE VICTORY' : '勝利 · VICTORY') : '敗北 · DEFEATED'}</div>
       <p class="center muted">${esc(where)}</p>
@@ -719,6 +886,7 @@ const UI = {
         <div><b>${sum.dmg}</b><span>Damage dealt</span></div><div><b>+${sum.shards}</b><span>Spirit Shards</span></div><div><b>+${sum.keys}</b><span>Moon Keys</span></div>
         <div><b>${sum.heat}</b><span>Moon Phase</span></div><div><b>${sum.boons.length}</b><span>Boons</span></div><div><b>${sum.relics.length}</b><span>Relics</span></div>
       </div>
+      ${gains.length ? `<div class="res-gains"><b>This run</b>${gains.map(g => `<span class="rg" style="--c:${g.col}"><span class="rg-i">${g.icon}</span>${esc(g.text)}</span>`).join('')}</div>` : ''}
       <div class="build mini">${sum.boons.map(b => { const d = BOON_BY_ID[b.id]; return `<span class="chip" style="--c:${KAMI[d.k].color}">${KAMI[d.k].glyph} ${esc(d.name)} ${b.lv > 1 ? 'Lv' + b.lv : ''}</span>`; }).join('')}${sum.relics.map(r => `<span class="chip">${RELIC_BY_ID[r].icon} ${esc(RELIC_BY_ID[r].name)}</span>`).join('')}${Object.entries(sum.disc || {}).map(([id, lv]) => `<span class="chip">${DISC_BY_ID[id].icon} ${esc(DISC_BY_ID[id].name)} Lv${lv}</span>`).join('')}</div>
       <div class="row-end"><button class="btn big" id="res-ok">Return to the Shrine</button></div>`, null, { noEsc: true, wide: true });
     $('#res-ok', p).onclick = () => { SFX.play('uiok'); this.close(); done(); };

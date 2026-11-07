@@ -126,7 +126,7 @@ Everyone at the restored shrine keeps forgetting Kuroto. Ponta asks who he is. T
 
 ## Build order
 1. **Act I (done, in `js/tokoyo.js`):** rift becomes a real gate to a fourth campaign, the first biome, the Worn, Okina, the script, Ponta's rescue. Story beats fire only once, since players replay acts.
-2. **Shard Assist,** because it unlocks at the end of Act I. Start with a few heroes.
+2. **Shard Assist (done, in `js/assist.js`),** because it unlocks at the end of Act I. Akane, Rei, Yuki, Kaito, Sekka and Kuroto have their own moves; everyone else uses Thread Strike until they get one.
 3. **Rooms and hazards,** added to Act I so they can be tested in play.
 4. **Acts II and III,** then the new gods.
 5. **Act IV and the ending.**

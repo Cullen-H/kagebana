@@ -378,7 +378,7 @@ class Enemy {
       }
     } else st.burn = 0;
     if (st.chillT > 0) { st.chillT -= dt; } else st.chill = 0;
-    st.freeze -= dt; st.curse -= dt; st.stun -= dt;
+    st.freeze -= dt; st.curse -= dt; st.stun -= dt; if (st.sake > 0) st.sake -= dt;
     if (this.trait === 'regen' && !this.dead) this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.02 * dt);
     if (this.isBoss) { this.invulnT -= dt; this.armorT = (this.armorT || 0) - dt; }
     // knockback physics
@@ -1021,7 +1021,8 @@ class Proj {
         if (e.dead || e.spawnT > 0 || this.hit.has(e)) continue;
         if (Math.hypot(e.x - this.x, e.y - e.r - this.y) < e.r + this.r) {
           this.hit.add(e);
-          G.damageEnemy(e, this.dmg, { slot: this.slot, kb: this.kb, kbAng: Math.atan2(this.vy, this.vx) });
+          G.damageEnemy(e, this.dmg, { slot: this.slot, kb: this.kb, kbAng: Math.atan2(this.vy, this.vx), noProc: this.noProc });
+          if (this.onHit) this.onHit(e, this);
           if (this.pierce-- <= 0) { this.dead = true; break; }
         }
       }
