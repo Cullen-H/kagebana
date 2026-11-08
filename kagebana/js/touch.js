@@ -40,6 +40,8 @@ const TOUCH = {
     this.mv = el.querySelector('.t-move'); this.mvKnob = this.mv.firstElementChild;
     this.am = el.querySelector('.t-aim'); this.amKnob = this.am.firstElementChild;
     this.btnInt = el.querySelector('.t-int'); this.pips = el.querySelector('.t-pips'); this.cd = el.querySelector('.t-cd');
+    this.btnDash = el.querySelector('.t-dash'); this.btnSp = el.querySelector('.t-sp');
+    this.ultEl = document.getElementById('ult'); this.asEl = document.getElementById('assist');
 
     const opt = { passive: false };
     // Move stick: appears wherever the left thumb lands.
@@ -177,6 +179,7 @@ const TOUCH = {
     const dlg = document.getElementById('dialogue');
     const show = want && (G.scene === 'run' || G.scene === 'hub') && !UI.modal && hud && !hud.classList.contains('hidden') && !(dlg && !dlg.classList.contains('hidden'));
     if (show !== this.shown) { this.shown = show; this.el.classList.toggle('show', show); if (!show) this.reset(); }
+    if (!want) for (const b of [this.ultEl, this.asEl]) if (b) b.classList.remove('off'); // desktop HUD keeps its colours
     if (!document.fullscreenElement) this.fsTried = false;
     PERF.frame();
     if (!show || !P) return;
@@ -184,6 +187,13 @@ const TOUCH = {
     const nn = G.nearNpc, nearOk = nn && G.npcs.includes(nn) && !nn.scenery && Math.hypot(P.x - nn.x, P.y - nn.y) < nn.r + 70;
     const canInt = !!nearOk || (G.hubFight && G.hubFight.tag >= 100);
     this.btnInt.classList.toggle('hidden', !canInt);
+    // Grey out anything that can't be used right now (same rules as the player's update).
+    const locked = G.controlLocked || P.hp <= 0, off = (b, v) => { if (b) b.classList.toggle('off', !!v); };
+    off(this.am, locked);
+    off(this.btnDash, locked || P.dashes <= 0);
+    off(this.btnSp, locked || P.spT > 0 || G.qteBlocks('special'));
+    off(this.ultEl, locked || (!P.hero.swap && P.ult < 100));
+    off(this.asEl, locked || !G.run || G.run.assistCd > 0 || !!G.assistActor);
     const sp = P.spT > 0 && P.spMax ? P.spT / P.spMax : 0;
     this.cd.style.height = (sp * 100) + '%';
     const n = P.dashes | 0, mx = P.stats.dash | 0;

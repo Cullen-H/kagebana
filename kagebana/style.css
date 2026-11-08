@@ -455,3 +455,6 @@ body.touch canvas#game { cursor: default; }
   .title-menu .btn { width: 220px; padding-top: 7px; padding-bottom: 7px; }
   .title-foot { flex-basis: 100%; font-size: 11px; }
 }
+/* Touch buttons that can't be used right now go fully grey. */
+#touch .off, body.touch #ult.off, body.touch #assist.off { filter: grayscale(1) brightness(.75); opacity: .45; border-color: rgba(255, 255, 255, .25); box-shadow: none; animation: none; }
+#touch .t-btn, #touch .t-stick, body.touch #ult, body.touch #assist { transition: opacity .15s, filter .15s; }
