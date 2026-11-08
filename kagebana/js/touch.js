@@ -197,8 +197,8 @@ const PERF = {
   acc: 0, n: 0, last: 0,
   mode() { return (SAVE.data && SAVE.data.settings.gfx) || 'auto'; },
   apply() {
-    const lite = this.mode() === 'lite' || (this.mode() === 'auto' && this.autoLite);
-    if (lite === !!G.lite) return;
+    const lite = this.mode() === 'lite' || (this.mode() === 'auto' && !!this.autoLite);
+    if (lite === !!G.lite) return; // resizing clears the canvas, so only ever do it on a real change
     G.lite = lite; G.parts.cap = lite ? 300 : 900; G.resize();
   },
   frame() {

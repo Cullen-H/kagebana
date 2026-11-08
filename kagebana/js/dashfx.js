@@ -67,7 +67,8 @@ const DASH_FX = {
     },
   },
   kaito: {
-    start(p) { G.decal({ x: p.x, y: p.y - 30, dur: 0.4, draw(ctx, d, k) { ctx.save(); ctx.globalAlpha = 1 - k; ctx.fillStyle = '#f0eaff'; ctx.beginPath(); ctx.arc(d.x, d.y, 9, 0, TAU); ctx.fill(); ctx.globalCompositeOperation = 'destination-out'; ctx.beginPath(); ctx.arc(d.x + 4, d.y - 2, 8, 0, TAU); ctx.fill(); ctx.restore(); } }); },
+    // A crescent glint: two arcs, so nothing is cut out of the world behind it.
+    start(p) { G.decal({ x: p.x, y: p.y - 30, dur: 0.4, draw(ctx, d, k) { ctx.save(); ctx.globalAlpha = 1 - k; ctx.fillStyle = '#f0eaff'; ctx.beginPath(); ctx.arc(d.x, d.y, 9, 0.6, TAU - 0.6); ctx.arc(d.x + 4, d.y - 2, 8, TAU - 0.9, 0.9, true); ctx.closePath(); ctx.fill(); ctx.restore(); } }); },
     trail(p) { if (Math.random() < 0.6) G.parts.burst(p.x, p.y - 18, 1, { type: 'glow', color: '#7a4bd6', min: 5, max: 30, size: 4, life: 0.4 }); },
   },
   sayo: {
