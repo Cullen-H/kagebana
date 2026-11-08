@@ -16,7 +16,7 @@ const SAVE = {
       heroes: Object.fromEntries(HERO_ORDER.map(h => [h, { unlocked: h === 'akane', forms: [0], form: 0 }])), patron: 'fire', patron2: 'ice',
       hero: 'akane', flags: {}, talked: {}, runs: 0, deaths: 0, clears: 0, bossKills: {}, bossMeets: {}, clearsByHero: {},
       seen: {}, kills: {}, relicsSeen: {}, kamiSeen: {}, bestHeat: -1, bestDepth: 0, playTime: 0,
-      settings: { vol: 0.7, sfx: 0.8, music: 0.5, shake: true, dmgNum: true, binds: JSON.parse(JSON.stringify(DEFAULT_BINDS)) },
+      settings: { vol: 0.7, sfx: 0.8, music: 0.5, shake: true, dmgNum: true, touch: 'auto', touchFs: true, gfx: 'auto', binds: JSON.parse(JSON.stringify(DEFAULT_BINDS)) },
     };
   },
   load() {
@@ -49,7 +49,7 @@ const WALL = 40, WALL_TOP = 90;
 /* ------------------------------------------------------------------ */
 const G = {
   scene: 'boot', t: 0, hitstop: 0, timeScale: 1, slowT: 0, fadeA: 0, fadeDir: 0, fadeCb: null,
-  enemies: [], projs: [], zones: [], pickups: [], obstacles: [], doors: [], npcs: [], ghosts: [],
+  enemies: [], projs: [], zones: [], pickups: [], obstacles: [], doors: [], npcs: [], ghosts: [], decals: [], stopHeld: [],
   slashes: [], rings: [], lines: [], bolts: [], texts: [], timers: [], says: [], amb: [],
   parts: new Particles(), cam: { x: 700, y: 450, shake: 0, sx: 0, sy: 0 }, zoom: 1,
   room: null, run: null, controlLocked: false, flashA: 0, flashC: '#fff', boss: null,
@@ -70,7 +70,7 @@ const G = {
     setInterval(() => { if (this.scene === 'run' || this.scene === 'hub') { SAVE.data.playTime += 10; } }, 10000);
   },
   resize() {
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const dpr = this.lite ? 1 : Math.min(2, window.devicePixelRatio || 1); // Lite graphics (touch.js) renders at 1x
     this.dpr = dpr; this.w = window.innerWidth; this.h = window.innerHeight;
     this.canvas.width = Math.floor(this.w * dpr); this.canvas.height = Math.floor(this.h * dpr);
     this.canvas.style.width = this.w + 'px'; this.canvas.style.height = this.h + 'px';
@@ -82,6 +82,8 @@ const G = {
   camp() { return CAMPAIGNS[this.run ? this.run.camp || 0 : 0]; },
   qtes: [], darkT: 0, timeStopT: 0, timeStopMax: 1, bubbles: [], camTarget: null, riftOpen: 0, hubBreak: 0,
   ez() { return this.zoom * ((this.room && this.room.zoomMul) || 1); },
+  /* The interact prompt's key: the bound key, the pad button, or the touch button. */
+  intKey() { return Input.usingTouch && !Input.usingPad ? '✋' : Input.usingPad ? '(B)' : `[${keyName(Input.binds().interact[0])}]`; },
   pAfter(t, fn) { this.timers.push({ t, fn, p: true }); },
   actMult() { return [1, 1.45, 2.0, 2.7][this.run ? this.run.act : 0]; },
 
@@ -93,6 +95,11 @@ const G = {
     const z = this.ez();
     Input.mouse.wx = (Input.mouse.x - this.w / 2) / z + this.cam.x;
     Input.mouse.wy = (Input.mouse.y - this.h / 2) / z + this.cam.y;
+    // With no mouse (touch or gamepad), moves aimed "at the cursor" target a point ahead of the hero.
+    if ((Input.usingTouch || Input.usingPad) && P) {
+      const d = Input.usingTouch && !Input.usingPad && typeof TOUCH !== 'undefined' ? TOUCH.reach() : 260;
+      Input.mouse.wx = P.x + Math.cos(P.aim) * d; Input.mouse.wy = P.y - 18 + Math.sin(P.aim) * d;
+    }
     if ((this.scene === 'run' || this.scene === 'hub') && !UI.modal && Input.pauseHit()) UI.pause();
     const active = (this.scene === 'run' || this.scene === 'hub' || this.scene === 'title') && !UI.modal;
     if (active) this.update(rdt);
@@ -100,6 +107,7 @@ const G = {
     this.updateFade(rdt);
     this.render();
     if (this.scene === 'run' || this.scene === 'hub') UI.hud();
+    if (typeof TOUCH !== 'undefined') TOUCH.tick();
     Input.endFrame();
     requestAnimationFrame(t => this.loop(t));
   },
@@ -130,7 +138,9 @@ const G = {
     if (!stopped) for (const e of this.enemies) if (!e.dead) e.update(this.bubbles.length && inBubble(e.x, e.y) ? dt * 0.3 : dt);
     this.separate();
     this.enemies = this.enemies.filter(e => !e.dead);
-    for (const p of this.projs) { if (p.team === 'e') { if (stopped) continue; p.update(this.bubbles.length && inBubble(p.x, p.y) ? dt * 0.3 : dt); } else p.update(dt); }
+    // Time stop freezes every projectile, yours included; they carry on when time resumes.
+    for (const p of this.projs) { if (stopped) continue; if (p.team === 'e') p.update(this.bubbles.length && inBubble(p.x, p.y) ? dt * 0.3 : dt); else p.update(dt); }
+    if (!stopped && this.stopHeld.length) this.releaseStop();
     this.projs = this.projs.filter(p => !p.dead);
     for (const z of this.zones) if (!(stopped && z.team === 'e')) z.update(dt);
     this.zones = this.zones.filter(z => !z.dead);
@@ -197,6 +207,9 @@ const G = {
     this.bolts.push({ pts, color, t: 0, dur: 0.2 });
   },
   ghost(p, x, y, dur = 0.3) { this.ghosts.push({ kind: 'p', x, y, dur, t: 0, pal: p.hero.pal, hair: p.hero.hair, acc: p.hero.acc, lx: p.lookX, ly: p.lookY, pt: p.t }); },
+  /* A one-off drawing in the world, depth-sorted with everything else (see dashfx.js).
+     draw(ctx, d, k): k runs 0 → 1 over its life. tick(d, dt) and end(d) are optional. */
+  decal(o) { const d = Object.assign({ t: 0, dur: 0.5 }, o); this.decals.push(d); return d; },
   ghostE(e, x, y) { this.ghosts.push({ kind: 'e', e, x: x === undefined ? e.x : x, y: y === undefined ? e.y : y, dur: 0.25, t: 0 }); },
   boom(x, y, r) {
     this.fxRing(x, y, r, '#ffb347', 0.35, 10);
@@ -304,6 +317,14 @@ const G = {
   damageEnemy(e, base, src = {}) {
     if (!e || e.dead || e.spawnT > 0 || !P) return 0;
     if (e.isBoss && (e.invulnT > 0 || e.intro > 0)) { if (Math.random() < 0.06) this.text(e.x, e.y - 70, 'IMMUNE', '#aaa', 12); return 0; }
+    // During a time stop, hits are held and all land together when time resumes (releaseStop).
+    if (this.timeStopT > 0 && !src.released) {
+      (e.stopHits || (e.stopHits = [])).push([base, src]);
+      if (!this.stopHeld.includes(e)) this.stopHeld.push(e);
+      this.parts.burst(e.x, e.y - e.r, 3, { color: '#c8d8ff', min: 40, max: 120, size: 2, life: 0.3 });
+      if (this.t - (e.stopTxt || -9) > 0.12) { e.stopTxt = this.t; this.text(e.x, e.y - e.r * 2.5, '×' + e.stopHits.length, '#c8d8ff', 13); SFX.play('tick', 0.6); }
+      return 0;
+    }
     const s = P.stats, slot = src.slot, dot = !!src.dot;
     let dmg = base;
     if (slot === 'attack') dmg *= s.atk; else if (slot === 'special') dmg *= s.sp;
@@ -352,14 +373,16 @@ const G = {
     if (blocked) {
       SFX.play('clang'); this.parts.burst(e.x + Math.cos(e.face) * 20, e.y - 20, 6, { color: '#49f0ff' });
       this.text(e.x, e.y - e.r * 2.5, 'BLOCK', '#49f0ff', 12, { dmg: true });
+    } else if (src.released) {
+      // one combined number is shown by releaseStop instead
     } else if (!src.quiet || dmg >= 10) {
       const col = dot ? (src.color || '#ff9a4d') : crit ? '#ffe14d' : (src.color || '#ffffff');
       this.text(e.x, e.y - e.r * 2.5, Math.round(dmg) + (crit ? '!' : ''), col, crit ? 24 : dot ? 13 : 17, { dmg: true, crit });
     }
     if (!dot) {
       this.parts.burst(e.x, e.y - e.r, crit ? 10 : 5, { color: crit ? '#ffe14d' : (el ? KAMI[el.k].color : '#fff'), min: 80, max: 300, size: 2 });
-      SFX.play(crit ? 'crit' : 'hit', 0.8);
-      if (slot !== 'ult' && !(P.bankaiT > 0 || P.prayT > 0 || P.berserkT > 0 || P.feastT > 0 || P.luckyT > 0 || P.domainT > 0 || P.auraT > 0 || P.typhoon || this.timeStopT > 0)) P.ult = Math.min(100, P.ult + dmg * 0.075 * s.ultGain);
+      if (!src.released) SFX.play(crit ? 'crit' : 'hit', 0.8);
+      if (slot !== 'ult' && !src.released && !(P.bankaiT > 0 || P.prayT > 0 || P.berserkT > 0 || P.feastT > 0 || P.luckyT > 0 || P.domainT > 0 || P.auraT > 0 || P.typhoon || this.timeStopT > 0)) P.ult = Math.min(100, P.ult + dmg * 0.075 * s.ultGain);
       if (s.lifesteal) P.heal(dmg * s.lifesteal, true);
       if (P.feastT > 0) P.heal(dmg * 0.08, true);
       if (s.unbound && P.berserkT > 0) P.heal(dmg * 0.05, true);
@@ -375,6 +398,23 @@ const G = {
     if (e.scriptedFloor && this.hubFight && e.hp <= e.maxHp * e.scriptedFloor) { e.hp = e.maxHp * e.scriptedFloor; this.endHubFight(e); return dmg; }
     if (e.hp <= 0 && !e.dead) this.killEnemy(e);
     return dmg;
+  },
+  /* Time has resumed: every hit held on each enemy lands at once, with one combined number. */
+  releaseStop() {
+    const held = this.stopHeld; this.stopHeld = [];
+    let any = false;
+    for (const e of held) {
+      const hits = e.stopHits || []; e.stopHits = null;
+      if (e.dead || !hits.length) continue;
+      let tot = 0;
+      for (const [b, src] of hits) { if (e.dead) break; tot += this.damageEnemy(e, b, Object.assign({}, src, { released: true })) || 0; }
+      if (tot > 0) {
+        any = true;
+        this.text(e.x, e.y - e.r * 3, Math.round(tot) + (hits.length > 1 ? `  ×${hits.length}` : ''), '#c8d8ff', hits.length > 4 ? 26 : 20, { dmg: true, crit: true });
+        this.parts.burst(e.x, e.y - e.r, Math.min(20, 4 + hits.length * 2), { type: 'shard', color: '#dfe8ff', min: 100, max: 340, size: 2 });
+      }
+    }
+    if (any) { SFX.play('crit'); SFX.play('heavy', 0.6); this.shake(6); }
   },
   proc(e, el, dmg, crit) {
     const s = P.stats, pw = el.pw;
@@ -514,7 +554,10 @@ const G = {
     const parrying = (P.parryT > 0 || P.domainT > 0) && P.hero.onParry;
     // A raised mirror catches every projectile, even in the instant right after another parry.
     if (parrying && src instanceof Proj) { src.dead = true; P.hero.onParry(P, src); return true; }
-    if (P.iframes > 0 || P.invuln > 0) return false;
+    if (P.iframes > 0 || P.invuln > 0) {
+      if (P.dashAt !== undefined && this.t - P.dashAt < 0.3 && P.dashFx && P.dashFx.dodge) P.dashFx.dodge(P);
+      return false;
+    }
     const s = P.stats;
     if (parrying) {
       let foe = src;
@@ -833,6 +876,7 @@ const G = {
     this.hubFight = null; this.assistActor = null;
     this.enemies = []; this.projs = []; this.zones = []; this.pickups = []; this.obstacles = []; this.doors = []; this.npcs = [];
     this.ghosts = []; this.slashes = []; this.rings = []; this.lines = []; this.bolts = []; this.texts = []; this.timers = []; this.says = [];
+    this.decals = []; this.stopHeld = [];
     this.parts.clear(); this.boss = null; UI.bossBar(null);
   },
   makeRoom(spec) {
@@ -1505,6 +1549,8 @@ const G = {
   updateFx(dt) {
     const step = (arr) => { for (const f of arr) f.t += dt; return arr.filter(f => f.t < f.dur); };
     this.slashes = step(this.slashes); this.rings = step(this.rings); this.lines = step(this.lines); this.bolts = step(this.bolts); this.ghosts = step(this.ghosts);
+    for (const d of this.decals) { d.t += dt; if (d.tick) d.tick(d, dt); if (d.t >= d.dur && d.end) d.end(d); }
+    this.decals = this.decals.filter(d => d.t < d.dur);
     for (const t of this.texts) { t.t += dt; t.y += t.vy * dt; t.vy *= 1 - dt * 2.5; }
     this.texts = this.texts.filter(t => t.t < t.life);
     for (const s of this.says) s.t += dt;
@@ -1578,6 +1624,7 @@ const G = {
     for (const n of this.npcs) list.push({ y: n.drawY === undefined ? n.y : n.drawY, d: () => { const fa = n.alpha !== undefined && n.alpha < 1; if (fa) { ctx.save(); ctx.globalAlpha = Math.max(0, n.alpha); } n.draw(ctx, n, this.t); if (n.extra) n.extra(ctx, n, this.t); if (fa) ctx.restore(); } });
     for (const e of this.enemies) list.push({ y: e.y, d: () => e.draw(ctx) });
     for (const g of this.ghosts) list.push({ y: g.y - 1, d: () => this.drawGhost(ctx, g) });
+    for (const dc of this.decals) list.push({ y: dc.y === undefined ? -1e9 : dc.y - 2, d: () => { try { dc.draw(ctx, dc, Math.min(1, dc.t / dc.dur)); } catch (err) { dc.t = dc.dur; } } });
     if (P && (P.hp > 0 || this.scene === 'hub')) list.push({ y: P.y, d: () => P.draw(ctx) });
     list.sort((a, b) => a.y - b.y);
     for (const it of list) it.d();
@@ -1591,7 +1638,7 @@ const G = {
     if (this.scene === 'hub' && this.nearNpc && !UI.modal) {
       const n = this.nearNpc;
       ctx.save(); ctx.font = '700 14px "Zen Kaku Gothic New", sans-serif'; ctx.textAlign = 'center';
-      const txt = `[F] ${n.prompt}`, w = ctx.measureText(txt).width + 24;
+      const txt = `${this.intKey()} ${n.prompt}`, w = ctx.measureText(txt).width + 24;
       const y = n.y - (n.id === 'gate' ? 170 : 90) + Math.sin(this.t * 4) * 3;
       ctx.fillStyle = 'rgba(10,8,20,.85)'; rrect(ctx, n.x - w / 2, y - 18, w, 28, 8); ctx.fill();
       ctx.strokeStyle = '#ffb04d'; ctx.lineWidth = 1.5; ctx.stroke();
@@ -1599,6 +1646,7 @@ const G = {
       ctx.fillStyle = '#ffb04d'; ctx.font = '600 11px sans-serif'; ctx.fillText(n.name, n.x, y - 24);
       ctx.restore();
     }
+    if (this.scene === 'run') this.nearNpc = null; // set again just below if someone is close
     if (this.scene === 'run' && this.room.spec && this.npcs.length && !UI.modal) {
       for (const n of this.npcs) {
         if (n.scenery) continue;
@@ -1606,7 +1654,7 @@ const G = {
         if (d < n.r + 70) {
           this.nearNpc = n;
           ctx.save(); ctx.font = '700 14px sans-serif'; ctx.textAlign = 'center';
-          const txt = `[F] ${n.prompt}`, w = ctx.measureText(txt).width + 24, y = n.y - 110;
+          const txt = `${this.intKey()} ${n.prompt}`, w = ctx.measureText(txt).width + 24, y = n.y - 110;
           ctx.fillStyle = 'rgba(10,8,20,.85)'; rrect(ctx, n.x - w / 2, y - 18, w, 28, 8); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(txt, n.x, y + 1); ctx.restore();
           if (Input.interactHit()) { SFX.play('ui'); n.interact(n); }
         }

@@ -98,6 +98,8 @@ const DEV = {
   /* Runs synchronously with a stepped clock, so it is fast and doesn't depend on the frame rate. */
   sim(seconds) { for (let t = 0; t < seconds; t += 1 / 30) { G.update(1 / 30); G.render(); } },
   fail(where, err) { this.errors.push({ where, error: String(err && err.message || err), at: String(err && err.stack || '').split('\n').slice(1, 3).map(s => s.trim()).join(' < ') }); },
+  /* Presses dash for one frame. */
+  dash() { const k = (SAVE.data.settings.binds.dash || ['Space'])[0]; Input.pressed[k] = true; this.sim(1 / 30); Input.pressed[k] = false; },
   arena(camp) {
     G.startRun(camp); G.fadeDir = 0; G.fadeCb = null; G.fadeA = 0;
     G.clearWorld(); G.makeRoom({ type: 'boss' });
@@ -118,6 +120,7 @@ const DEV = {
         const dummy = G.spawnEnemy('kappa', P.x, P.y - 160, { noSpawn: true, hpMult: 200 });
         P.aim = -Math.PI / 2;
         const H = P.hero;
+        for (let i = 0; i < 3; i++) { this.dash(); this.sim(0.4); }
         for (let i = 0; i < 6; i++) { if (H.attack) H.attack(P); this.sim(0.3); }
         if (H.special) H.special(P); this.sim(1);
         if (H.swap) for (let i = 0; i < 3; i++) { H.swap(P); H.attack(P); H.special(P); this.sim(1); }

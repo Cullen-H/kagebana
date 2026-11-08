@@ -145,7 +145,8 @@ class Player {
     if (this.bankaiT > 0 && Math.random() < dt * 40) G.parts.add({ x: this.x + rand(-16, 16), y: this.y - rand(0, 44), vx: rand(-20, 20), vy: -120, life: 0.4, t: 0, size: 3, color: Math.random() < 0.5 ? '#c8102e' : '#1a0008', type: 'spark', drag: 1, grav: 0, rot: 0, vr: 0 });
     if (this.comboT <= 0 && this.atkCd <= 0) this.combo = 0;
     // aim
-    if (Input.usingPad) this.aim = Math.atan2(Input.padAim.y, Input.padAim.x);
+    if (Input.usingTouch && !Input.usingPad && typeof TOUCH !== 'undefined') this.aim = TOUCH.aimAt(this);
+    else if (Input.usingPad) this.aim = Math.atan2(Input.padAim.y, Input.padAim.x);
     else this.aim = Math.atan2(Input.mouse.wy - (this.y - 18), Input.mouse.wx - this.x);
     const mv = G.controlLocked ? { x: 0, y: 0 } : Input.moveVec();
     this.moving = Math.hypot(mv.x, mv.y) > 0.1;
@@ -165,9 +166,11 @@ class Player {
     else this.dashTimer = 0;
 
     if (this.dashT > 0) {
-      this.dashT -= dt;
-      const sp = 1150 * s.dashDist * (this.bankaiT > 0 ? 1.2 : 1);
-      G.moveSafe(this, this.dashDir.x * sp * dt, this.dashDir.y * sp * dt);
+      this.dashT -= dt; this.dashAge += dt;
+      const fx = this.dashFx || {};
+      const sp = 1150 * s.dashDist * (this.bankaiT > 0 ? 1.2 : 1) * (this.dashMul || 1);
+      if (G.moveSafe(this, this.dashDir.x * sp * dt, this.dashDir.y * sp * dt) && fx.wall) fx.wall(this);
+      if (fx.trail) fx.trail(this, dt);
       if (s.dashDmg > 0) {
         for (const e of G.enemies) {
           if (e.dead || e.spawnT > 0 || this.dashHit.has(e)) continue;
@@ -183,7 +186,8 @@ class Player {
           onFire: z => { for (const e of G.enemiesInRange(z.x, z.y, z.r)) { if (ember) G.burn(e, 6 * ember); if (s.blizWake) G.chill(e, 1); } } });
       }
       if (s.windTrail && Math.random() < dt * 40) G.pZone({ x: this.x, y: this.y, r: 46, warn: 0.15, dmg: 16 * s.windTrail, slot: 'misc', color: '#7dffb0', quiet: true, noProc: true });
-      if (Math.random() < 0.6) G.ghost(this, this.x, this.y, 0.22);
+      if (!fx.noGhost && Math.random() < 0.6) G.ghost(this, this.x, this.y, 0.22);
+      if (this.dashT <= 0 && fx.end) fx.end(this);
     } else if (!G.controlLocked) {
       if (this.moving) this.stillT = 0; else this.stillT += dt;
       const sp = s.speed * (s.resolve && this.hp / s.maxHp < 0.35 ? 1.15 : 1) * (this.swingT > 0 ? 0.55 : 1) * this.speedMult();
@@ -220,8 +224,11 @@ class Player {
         if (s.dashCrit) this.critNext = true;
         if (s.dashGuard) this.guardT = 1;
         this.dashFrom = { x: this.x, y: this.y }; this.dashHit = new Set();
-        SFX.play('dash');
-        G.parts.burst(this.x, this.y, 8, { type: 'smoke', color: '#ffffff', min: 20, max: 80, size: 4 });
+        const fx = this.dashFx = (typeof DASH_FX !== 'undefined' && DASH_FX[this.hero.id]) || {};
+        this.fxHit = new Set(); this.dashMul = 1; this.dashAge = 0; this.dashAt = G.t; this.wallUsed = false;
+        SFX.play(fx.sfx || 'dash');
+        if (!fx.noPuff) G.parts.burst(this.x, this.y, 8, { type: 'smoke', color: '#ffffff', min: 20, max: 80, size: 4 });
+        if (fx.start) fx.start(this);
         if (this.hero.onDash) this.hero.onDash(this);
         if (s.dashHeal) this.heal(s.dashHeal, true);
         if (s.dashChill) for (const e of G.enemiesInRange(this.x, this.y, 140)) G.chill(e, 1);
@@ -274,6 +281,7 @@ class Player {
     } else if (!this.moving && this.trail.length > 2 && Math.random() < 0.3) this.trail.pop();
   }
   draw(ctx) {
+    if (this.dashT > 0 && this.dashFx && this.dashFx.hide) return; // flash step: gone mid-dash
     const blink = this.iframes > 0 && this.dashT <= 0 && Math.floor(this.t * 20) % 2 === 0 && this.hurtFlash > -0.5;
     const flash = this.hurtFlash > 0.15;
     const aimUp = Math.sin(this.aim) < -0.3;

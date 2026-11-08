@@ -205,8 +205,12 @@ const UI = {
     const s = P.stats, run = G.run, S = SAVE.data;
     const hpPct = Math.max(0, P.hp / s.maxHp);
     this.setH('hp', Math.ceil(P.hp) + '/' + s.maxHp, v => { $('#hp-text').textContent = v; $('#hp-fill').style.width = (hpPct * 100) + '%'; $('#hp-fill').classList.toggle('low', hpPct < 0.3); });
-    if (P.hero.swap) this.setH('ult', 'w' + P.weapon, () => { $('#ult').style.setProperty('--p', '100%'); $('#ult').classList.remove('ready'); $('#ult-n').textContent = P.hero.weapons[P.weapon].glyph; $('.ult-lbl').textContent = keyName(Input.binds().ult[0]) + ' SWAP'; });
-    else this.setH('ult', Math.floor(P.ult), v => { $('#ult').style.setProperty('--p', v + '%'); $('#ult').classList.toggle('ready', v >= 100); $('#ult-n').textContent = v >= 100 ? keyName(Input.binds().ult[0]) : v; $('.ult-lbl').textContent = 'ULT'; });
+    // On touch the icons are buttons, so they don't show key names.
+    const tch = !!(Input.usingTouch && !Input.usingPad);
+    this.setH('tch', tch, () => { delete this.hudCache.ult; delete this.hudCache.asid; });
+    const uKey = tch ? 'GO' : keyName(Input.binds().ult[0]);
+    if (P.hero.swap) this.setH('ult', 'w' + P.weapon, () => { $('#ult').style.setProperty('--p', '100%'); $('#ult').classList.remove('ready'); $('#ult-n').textContent = P.hero.weapons[P.weapon].glyph; $('.ult-lbl').textContent = tch ? 'SWAP' : uKey + ' SWAP'; });
+    else this.setH('ult', Math.floor(P.ult), v => { $('#ult').style.setProperty('--p', v + '%'); $('#ult').classList.toggle('ready', v >= 100); $('#ult-n').textContent = v >= 100 ? uKey : v; $('.ult-lbl').textContent = 'ULT'; });
     const asId = run && G.assistId ? G.assistId() : null;
     this.setH('asid', asId || '', id => {
       const el = $('#assist'); el.classList.toggle('hidden', !id);
@@ -771,11 +775,15 @@ const UI = {
         <label>Music <input type="range" min="0" max="1" step="0.05" value="${s.music}" data-k="music"></label>
         <label class="chk"><input type="checkbox" data-c="shake" ${s.shake ? 'checked' : ''}> Screen shake</label>
         <label class="chk"><input type="checkbox" data-c="dmgNum" ${s.dmgNum ? 'checked' : ''}> Damage numbers</label>
+        <label>Touch controls <select data-s="touch">${[['auto', 'Auto (on for touch screens)'], ['on', 'Always on'], ['off', 'Off']].map(([v, t]) => `<option value="${v}" ${s.touch === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+        <label class="chk"><input type="checkbox" data-c="touchFs" ${s.touchFs !== false ? 'checked' : ''}> Full screen on tap (touch only)</label>
+        <label>Graphics <select data-s="gfx">${[['auto', 'Auto (Lite if it runs slowly)'], ['full', 'Full'], ['lite', 'Lite (faster)']].map(([v, t]) => `<option value="${v}" ${s.gfx === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
         <button class="btn" id="kb-open">⌨ Controls & Keybinds</button>
       </div>
       <div class="row-end"><button class="btn" data-close>Done</button></div>`, () => { if (fromTitle) this.title(); else if (back) back(); });
     p.querySelectorAll('input[type=range]').forEach(i => i.oninput = () => { s[i.dataset.k] = +i.value; SAVE.applySettings(); SAVE.save(); SFX.play('ui'); });
     p.querySelectorAll('input[type=checkbox]').forEach(i => i.onchange = () => { s[i.dataset.c] = i.checked; SAVE.save(); });
+    p.querySelectorAll('select[data-s]').forEach(i => i.onchange = () => { s[i.dataset.s] = i.value; if (i.dataset.s === 'gfx' && typeof PERF !== 'undefined') PERF.autoLite = false; if (i.dataset.s === 'touch' && i.value === 'off') Input.usingTouch = false; this.hudCache = {}; SAVE.save(); SFX.play('ui'); });
     $('#kb-open', p).onclick = () => { SFX.play('ui'); this.keybinds(() => this.settings(fromTitle, back)); };
   },
   keybinds(back) {

@@ -568,7 +568,7 @@ function drawChar(ctx, c) {
 // ---------- particles ----------
 class Particles {
   constructor() { this.list = []; }
-  add(p) { if (this.list.length < 900) this.list.push(p); return p; }
+  add(p) { if (this.list.length < (this.cap || 900)) this.list.push(p); return p; }
   burst(x, y, n, o = {}) {
     for (let i = 0; i < n; i++) {
       const a = o.ang !== undefined ? o.ang + rand(-(o.spread || 0.6), o.spread || 0.6) : rand(0, TAU);

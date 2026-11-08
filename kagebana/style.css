@@ -405,3 +405,53 @@ canvas#game { position: fixed; inset: 0; display: block; cursor: crosshair; }
 .nc-desc { margin: 8px 0; color: #e8dcf8; }
 .codex-h { font-family: var(--mincho); margin: 16px 0 4px; }
 @media (max-width: 760px) { .nc-row { grid-template-columns: 1fr; } .kb-row { grid-template-columns: 1fr 90px 90px; } }
+
+/* ---------------- touch controls (touch.js) ---------------- */
+.set-list select { background: #120d1c; color: var(--text); border: 1px solid var(--line); padding: 6px 8px; font: inherit; font-weight: 400; max-width: 60%; }
+body.touch { --sr: env(safe-area-inset-right, 0px); --sl: env(safe-area-inset-left, 0px); --sb: env(safe-area-inset-bottom, 0px); }
+body.touch canvas#game, #touch { touch-action: none; -webkit-touch-callout: none; }
+#touch { position: fixed; inset: 0; z-index: 12; pointer-events: none; display: none; }
+#touch.show { display: block; }
+#touch .t-zone { position: absolute; left: 0; top: 64px; bottom: 0; width: 48%; pointer-events: auto; }
+.t-stick { position: absolute; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .28); background: rgba(10, 8, 20, .28); pointer-events: none; }
+.t-knob { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(255, 255, 255, .35); box-shadow: 0 0 10px rgba(0, 0, 0, .4); }
+.t-stick.t-aim { left: auto; top: auto; margin: 0; right: calc(22px + var(--sr)); bottom: calc(22px + var(--sb)); width: 124px; height: 124px; pointer-events: auto; border-color: rgba(255, 79, 121, .55); background: rgba(255, 79, 121, .1); }
+.t-aim .t-knob { width: 52px; height: 52px; margin: -26px 0 0 -26px; background: rgba(255, 79, 121, .55); }
+.t-lbl { position: absolute; left: 0; right: 0; bottom: -16px; text-align: center; font-size: 9px; letter-spacing: .15em; color: rgba(255, 255, 255, .5); }
+.t-btn { position: absolute; width: 62px; height: 62px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .35); background: rgba(10, 8, 20, .55); color: #fff;
+  font: 700 10px var(--jp); letter-spacing: .06em; pointer-events: auto; overflow: hidden; padding: 0; }
+.t-btn span { position: relative; z-index: 1; }
+.t-btn.on { background: rgba(255, 255, 255, .3); transform: scale(.94); }
+.t-dash { right: calc(162px + var(--sr)); bottom: calc(18px + var(--sb)); border-color: rgba(110, 231, 255, .7); }
+.t-sp { right: calc(156px + var(--sr)); bottom: calc(98px + var(--sb)); border-color: rgba(110, 231, 255, .7); }
+.t-int { right: calc(230px + var(--sr)); bottom: calc(132px + var(--sb)); width: 52px; height: 52px; font-size: 20px; border-color: var(--gold); animation: ultGlow .6s infinite alternate; }
+.t-cd { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: rgba(0, 0, 0, .6); }
+.t-pips { position: absolute; left: 0; right: 0; bottom: 9px; display: flex; justify-content: center; gap: 3px; }
+.t-pips b { width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, .25); }
+.t-pips b.f { background: var(--cyan); }
+.t-pause { position: absolute; top: 8px; left: 50%; margin-left: -20px; width: 40px; height: 32px; border-radius: 8px; border: 1px solid var(--line); background: rgba(10, 8, 20, .6); color: #fff; font-size: 12px; pointer-events: auto; }
+/* HUD changes on touch: Ultimate and Assist become buttons beside the aim stick. */
+body.touch #ult { right: calc(26px + var(--sr)); bottom: calc(168px + var(--sb)); width: 62px; height: 62px; pointer-events: auto; }
+body.touch #assist { right: calc(98px + var(--sr)); bottom: calc(172px + var(--sb)); width: 52px; height: 52px; pointer-events: auto; }
+body.touch #assist canvas { width: 44px; height: 44px; }
+body.touch .as-key, body.touch #hint { display: none; }
+body.touch #boons { pointer-events: none; bottom: calc(8px + var(--sb)); left: calc(12px + var(--sl)); max-width: 40vw; }
+body.touch #hud-tl { left: calc(12px + var(--sl)); top: 10px; transform: scale(.85); transform-origin: top left; }
+body.touch #bossbar { top: 46px; }
+body.touch #toasts { bottom: auto; top: 90px; }
+body.touch canvas#game { cursor: default; }
+#rotate { display: none; }
+@media (orientation: portrait) {
+  body.touch #rotate { display: flex; position: fixed; inset: 0; z-index: 200; align-items: center; justify-content: center; background: var(--ink); text-align: center; padding: 24px; font-weight: 700; }
+  body.touch #rotate b { display: block; font-size: 54px; color: var(--sakura); margin-bottom: 10px; animation: spinHint 2s ease-in-out infinite; }
+}
+@keyframes spinHint { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(90deg); } }
+/* Short screens (a phone held sideways): side-by-side title, tighter spacing. */
+@media (max-height: 480px) and (orientation: landscape) {
+  #title { flex-direction: row; flex-wrap: wrap; gap: 10px 36px; align-content: center; overflow-y: auto; }
+  .logo-jp { font-size: clamp(60px, 22vh, 110px); }
+  .logo-en { font-size: 20px; }
+  .title-menu { gap: 6px; }
+  .title-menu .btn { width: 220px; padding-top: 7px; padding-bottom: 7px; }
+  .title-foot { flex-basis: 100%; font-size: 11px; }
+}
