@@ -61,6 +61,8 @@ const G = {
     Input.init(this.canvas);
     UI.init();
     window.addEventListener('resize', () => this.resize());
+    // Phones: if Chrome drops the canvas's memory (full screen, rotating, low memory), redraw the room's floor.
+    this.canvas.addEventListener('contextrestored', () => { if (this.room) this.room.floor = this.buildFloor(this.room); this.vig = null; });
     window.addEventListener('error', e => this.showError(e.error || e.message));
     window.addEventListener('unhandledrejection', e => this.showError(e.reason));
     this.resize();
@@ -109,7 +111,22 @@ const G = {
     }
     box.textContent += '\n• ' + msg + '\n  ' + at + '\n  ' + navigator.userAgent.replace(/^Mozilla\/5\.0 /, '');
   },
+  /* ?debug in the address: a small readout for testing on phones. */
+  debugInfo(ts) {
+    this.dbgN = (this.dbgN || 0) + 1;
+    if (ts - (this.dbgT || 0) < 500) return;
+    let el = document.getElementById('dbg');
+    if (!el) { el = document.createElement('div'); el.id = 'dbg'; el.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:4px;z-index:9998;background:rgba(0,0,0,.75);color:#7dffb0;font:11px monospace;padding:3px 6px;pointer-events:none;white-space:nowrap'; document.body.appendChild(el); }
+    const fps = Math.round(this.dbgN * 1000 / (ts - (this.dbgT || ts - 500))), c = this.canvas, lost = this.ctx.isContextLost ? this.ctx.isContextLost() : '?';
+    el.textContent = `${fps}fps · win ${innerWidth}x${innerHeight} · canvas ${c.width}x${c.height} (${c.style.width}) · dpr ${this.dpr} · lost ${lost} · ${this.scene} · cam ${Math.round(this.cam.x)},${Math.round(this.cam.y)} · P ${P ? Math.round(P.x) + ',' + Math.round(P.y) : '-'} · fs ${!!document.fullscreenElement}`;
+    this.dbgT = ts; this.dbgN = 0;
+  },
   frame(ts) {
+    // Going full screen or rotating can resize the page without a usable resize event (or with one fired
+    // mid-transition at the wrong size), leaving a blank canvas. Check the size every frame instead.
+    if (innerWidth > 0 && innerHeight > 0 && (innerWidth !== this.w || innerHeight !== this.h)) this.resize();
+    if (this.debug === undefined) this.debug = /[?&]debug\b/.test(location.search);
+    if (this.debug) this.debugInfo(ts);
     const rdt = Math.min(0.05, (ts - this.last) / 1000 || 0.016);
     this.last = ts;
     Input.pollPad();
