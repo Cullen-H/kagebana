@@ -61,6 +61,8 @@ const G = {
     Input.init(this.canvas);
     UI.init();
     window.addEventListener('resize', () => this.resize());
+    window.addEventListener('error', e => this.showError(e.error || e.message));
+    window.addEventListener('unhandledrejection', e => this.showError(e.reason));
     this.resize();
     this.makeHubRoom();
     this.scene = 'title';
@@ -88,7 +90,26 @@ const G = {
   actMult() { return [1, 1.45, 2.0, 2.7][this.run ? this.run.act : 0]; },
 
   /* ---------------- main loop ---------------- */
+  /* One bad frame shouldn't freeze the game: keep looping, and show the error on screen
+     (there's no console on a phone). */
   loop(ts) {
+    try { this.frame(ts); } catch (e) { this.showError(e); this.last = ts; requestAnimationFrame(t => this.loop(t)); }
+  },
+  showError(e) {
+    const msg = String((e && e.message) || e), at = String((e && e.stack) || '').split('\n').slice(0, 3).join(' < ').replace(/https?:\/\/[^ )]*\/js\//g, '');
+    this.errs = this.errs || {};
+    if (this.errs[msg]) return; this.errs[msg] = true;
+    let box = document.getElementById('errbox');
+    if (!box) {
+      box = document.createElement('div'); box.id = 'errbox';
+      box.style.cssText = 'position:fixed;left:8px;right:8px;top:8px;z-index:9999;background:rgba(120,0,20,.92);color:#fff;font:12px monospace;padding:8px;border-radius:6px;max-height:40vh;overflow:auto;white-space:pre-wrap';
+      box.onclick = () => box.remove();
+      document.body.appendChild(box);
+      box.textContent = 'Something broke (tap to hide). Please screenshot this:\n';
+    }
+    box.textContent += '\n• ' + msg + '\n  ' + at + '\n  ' + navigator.userAgent.replace(/^Mozilla\/5\.0 /, '');
+  },
+  frame(ts) {
     const rdt = Math.min(0.05, (ts - this.last) / 1000 || 0.016);
     this.last = ts;
     Input.pollPad();
@@ -1702,7 +1723,9 @@ const G = {
       ctx.restore();
     }
     if (this.timeStopT > 0) {
-      ctx.save(); ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = 'hsl(0,0%,50%)'; ctx.fillRect(0, 0, this.w, this.h);
+      // Greyscale the world. Browsers without the 'saturation' blend ignore it, which would paint solid grey, so check first.
+      ctx.save(); ctx.globalCompositeOperation = 'saturation';
+      if (ctx.globalCompositeOperation === 'saturation') { ctx.fillStyle = 'hsl(0,0%,50%)'; ctx.fillRect(0, 0, this.w, this.h); }
       ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = 'rgba(70,100,200,.14)'; ctx.fillRect(0, 0, this.w, this.h);
       const k = this.timeStopT / this.timeStopMax, cx = this.w / 2, cy = 70;
       ctx.strokeStyle = 'rgba(200,216,255,.8)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(cx, cy, 30, -Math.PI / 2, -Math.PI / 2 + TAU * k); ctx.stroke();
