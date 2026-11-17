@@ -77,6 +77,7 @@ const UI = {
         <button class="btn big" id="t-start">${has ? 'Continue' : 'Begin'}</button>
         <button class="btn" id="t-how">How to Play</button>
         <button class="btn" id="t-set">Settings</button>
+        ${typeof PWA !== 'undefined' && PWA.prompt ? '<button class="btn" id="t-install">⤓ Install as App</button>' : ''}
         ${has ? '<button class="btn ghost" id="t-wipe">Erase Save</button>' : ''}
       </div>
       <div class="title-foot">${has ? foot.join(' · ') : 'A roguelike of blades, Kami and broken moons'}</div>`;
@@ -87,6 +88,7 @@ const UI = {
       G.transition(() => G.toHub());
     };
     $('#t-how').onclick = () => { SFX.play('ui'); this.howTo(true); };
+    if ($('#t-install')) $('#t-install').onclick = () => { SFX.play('ui'); PWA.install(); };
     $('#t-set').onclick = () => { SFX.play('ui'); this.settings(true); };
     const w = $('#t-wipe');
     if (w) w.onclick = () => {
